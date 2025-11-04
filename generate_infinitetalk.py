@@ -1,9 +1,9 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
 import argparse
+import json
 import logging
 import os
 import sys
-import json
 import warnings
 from datetime import datetime
 
@@ -13,7 +13,6 @@ import random
 
 import torch
 import torch.distributed as dist
-from PIL import Image
 import subprocess
 
 import wan
@@ -24,7 +23,6 @@ from kokoro import KPipeline
 from transformers import Wav2Vec2FeatureExtractor
 from src.audio_analysis.wav2vec2 import Wav2Vec2Model
 from wan.utils.segvideo import shot_detect
-
 
 import librosa
 import pyloudnorm as pyln
@@ -267,14 +265,15 @@ def _parse_args():
         default=None,
         help="Quantization type, must be 'int8' or 'fp8'."
     )
-    
+
     args = parser.parse_args()
 
     _validate_args(args)
 
     return args
 
-def custom_init(device, wav2vec):    
+
+def custom_init(device, wav2vec):
     audio_encoder = Wav2Vec2Model.from_pretrained(
         wav2vec,
         local_files_only=True,
@@ -284,6 +283,7 @@ def custom_init(device, wav2vec):
     wav2vec_feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(wav2vec, local_files_only=True)
     return wav2vec_feature_extractor, audio_encoder
 
+
 def loudness_norm(audio_array, sr=16000, lufs=-23):
     meter = pyln.Meter(sr)
     loudness = meter.integrated_loudness(audio_array)
@@ -292,26 +292,29 @@ def loudness_norm(audio_array, sr=16000, lufs=-23):
     normalized_audio = pyln.normalize.loudness(audio_array, loudness, lufs)
     return normalized_audio
 
-def audio_prepare_multi(left_path, right_path, audio_type, sample_rate=16000):
 
-    if not (left_path=='None' or right_path=='None'):
+def audio_prepare_multi(left_path, right_path, audio_type, sample_rate=16000):
+    if not (left_path == 'None' or right_path == 'None'):
         human_speech_array1 = audio_prepare_single(left_path)
         human_speech_array2 = audio_prepare_single(right_path)
-    elif left_path=='None':
+    elif left_path == 'None':
         human_speech_array2 = audio_prepare_single(right_path)
         human_speech_array1 = np.zeros(human_speech_array2.shape[0])
-    elif right_path=='None':
+    elif right_path == 'None':
         human_speech_array1 = audio_prepare_single(left_path)
         human_speech_array2 = np.zeros(human_speech_array1.shape[0])
 
-    if audio_type=='para':
+    if audio_type == 'para':
         new_human_speech1 = human_speech_array1
         new_human_speech2 = human_speech_array2
-    elif audio_type=='add':
-        new_human_speech1 = np.concatenate([human_speech_array1[: human_speech_array1.shape[0]], np.zeros(human_speech_array2.shape[0])]) 
-        new_human_speech2 = np.concatenate([np.zeros(human_speech_array1.shape[0]), human_speech_array2[:human_speech_array2.shape[0]]])
+    elif audio_type == 'add':
+        new_human_speech1 = np.concatenate(
+            [human_speech_array1[: human_speech_array1.shape[0]], np.zeros(human_speech_array2.shape[0])])
+        new_human_speech2 = np.concatenate(
+            [np.zeros(human_speech_array1.shape[0]), human_speech_array2[:human_speech_array2.shape[0]]])
     sum_human_speechs = new_human_speech1 + new_human_speech2
     return new_human_speech1, new_human_speech2, sum_human_speechs
+
 
 def _init_logging(rank):
     # logging
@@ -324,9 +327,10 @@ def _init_logging(rank):
     else:
         logging.basicConfig(level=logging.ERROR)
 
+
 def get_embedding(speech_array, wav2vec_feature_extractor, audio_encoder, sr=16000, device='cpu'):
     audio_duration = len(speech_array) / sr
-    video_length = audio_duration * 25 # Assume the video fps is 25
+    video_length = audio_duration * 25  # Assume the video fps is 25
 
     # wav2vec_feature_extractor
     audio_feature = np.squeeze(
@@ -349,8 +353,9 @@ def get_embedding(speech_array, wav2vec_feature_extractor, audio_encoder, sr=160
     audio_emb = audio_emb.cpu().detach()
     return audio_emb
 
+
 def extract_audio_from_video(filename, sample_rate):
-    raw_audio_path = filename.split('/')[-1].split('.')[0]+'.wav'
+    raw_audio_path = filename.split('/')[-1].split('.')[0] + '.wav'
     ffmpeg_command = [
         "ffmpeg",
         "-y",
@@ -372,6 +377,7 @@ def extract_audio_from_video(filename, sample_rate):
 
     return human_speech_array
 
+
 def audio_prepare_single(audio_path, sample_rate=16000):
     ext = os.path.splitext(audio_path)[1].lower()
     if ext in ['.mp4', '.mov', '.avi', '.mkv']:
@@ -382,14 +388,15 @@ def audio_prepare_single(audio_path, sample_rate=16000):
         human_speech_array = loudness_norm(human_speech_array, sr)
         return human_speech_array
 
-def process_tts_single(text, save_dir, voice1):    
+
+def process_tts_single(text, save_dir, voice1):
     s1_sentences = []
 
     pipeline = KPipeline(lang_code='a', repo_id='weights/Kokoro-82M')
 
     voice_tensor = torch.load(voice1, weights_only=True)
     generator = pipeline(
-        text, voice=voice_tensor, # <= change voice here
+        text, voice=voice_tensor,  # <= change voice here
         speed=1, split_pattern=r'\n+'
     )
     audios = []
@@ -398,17 +405,16 @@ def process_tts_single(text, save_dir, voice1):
     audios = torch.concat(audios, dim=0)
     s1_sentences.append(audios)
     s1_sentences = torch.concat(s1_sentences, dim=0)
-    save_path1 =f'{save_dir}/s1.wav'
-    sf.write(save_path1, s1_sentences, 24000) # save each audio file
+    save_path1 = f'{save_dir}/s1.wav'
+    sf.write(save_path1, s1_sentences, 24000)  # save each audio file
     s1, _ = librosa.load(save_path1, sr=16000)
     return s1, save_path1
-    
-   
+
 
 def process_tts_multi(text, save_dir, voice1, voice2):
     pattern = r'\(s(\d+)\)\s*(.*?)(?=\s*\(s\d+\)|$)'
     matches = re.findall(pattern, text, re.DOTALL)
-    
+
     s1_sentences = []
     s2_sentences = []
 
@@ -417,7 +423,7 @@ def process_tts_multi(text, save_dir, voice1, voice2):
         if speaker == '1':
             voice_tensor = torch.load(voice1, weights_only=True)
             generator = pipeline(
-                content, voice=voice_tensor, # <= change voice here
+                content, voice=voice_tensor,  # <= change voice here
                 speed=1, split_pattern=r'\n+'
             )
             audios = []
@@ -429,7 +435,7 @@ def process_tts_multi(text, save_dir, voice1, voice2):
         elif speaker == '2':
             voice_tensor = torch.load(voice2, weights_only=True)
             generator = pipeline(
-                content, voice=voice_tensor, # <= change voice here
+                content, voice=voice_tensor,  # <= change voice here
                 speed=1, split_pattern=r'\n+'
             )
             audios = []
@@ -438,14 +444,14 @@ def process_tts_multi(text, save_dir, voice1, voice2):
             audios = torch.concat(audios, dim=0)
             s2_sentences.append(audios)
             s1_sentences.append(torch.zeros_like(audios))
-    
+
     s1_sentences = torch.concat(s1_sentences, dim=0)
     s2_sentences = torch.concat(s2_sentences, dim=0)
     sum_sentences = s1_sentences + s2_sentences
-    save_path1 =f'{save_dir}/s1.wav'
-    save_path2 =f'{save_dir}/s2.wav'
+    save_path1 = f'{save_dir}/s1.wav'
+    save_path2 = f'{save_dir}/s2.wav'
     save_path_sum = f'{save_dir}/sum.wav'
-    sf.write(save_path1, s1_sentences, 24000) # save each audio file
+    sf.write(save_path1, s1_sentences, 24000)  # save each audio file
     sf.write(save_path2, s2_sentences, 24000)
     sf.write(save_path_sum, sum_sentences, 24000)
 
@@ -453,6 +459,7 @@ def process_tts_multi(text, save_dir, voice1, voice2):
     s2, _ = librosa.load(save_path2, sr=16000)
     # sum, _ = librosa.load(save_path_sum, sr=16000)
     return s1, s2, save_path_sum
+
 
 def generate(args):
     rank = int(os.getenv("RANK", 0))
@@ -474,10 +481,10 @@ def generate(args):
             world_size=world_size)
     else:
         assert not (
-            args.t5_fsdp or args.dit_fsdp
+                args.t5_fsdp or args.dit_fsdp
         ), f"t5_fsdp and dit_fsdp are not supported in non-distributed environments."
         assert not (
-            args.ulysses_size > 1 or args.ring_size > 1
+                args.ulysses_size > 1 or args.ring_size > 1
         ), f"context parallel are not supported in non-distributed environments."
 
     if args.ulysses_size > 1 or args.ring_size > 1:
@@ -523,7 +530,6 @@ def generate(args):
         args.base_seed = base_seed[0]
 
     assert args.task == "infinitetalk-14B", 'You should choose infinitetalk in args.task.'
-    
 
     logging.info("Creating infinitetalk pipeline.")
     wan_i2v = wan.InfiniteTalkPipeline(
@@ -533,8 +539,8 @@ def generate(args):
         device_id=device,
         rank=rank,
         t5_fsdp=args.t5_fsdp,
-        dit_fsdp=args.dit_fsdp, 
-        use_usp=(args.ulysses_size > 1 or args.ring_size > 1),  
+        dit_fsdp=args.dit_fsdp,
+        use_usp=(args.ulysses_size > 1 or args.ring_size > 1),
         t5_cpu=args.t5_cpu,
         lora_dir=args.lora_dir,
         lora_scales=args.lora_scale,
@@ -547,39 +553,40 @@ def generate(args):
         wan_i2v.enable_vram_management(
             num_persistent_param_in_dit=args.num_persistent_param_in_dit
         )
-    
+
     generated_list = []
     with open(args.input_json, 'r', encoding='utf-8') as f:
         input_data = json.load(f)
-        
-    wav2vec_feature_extractor, audio_encoder= custom_init('cpu', args.wav2vec_dir)
+
+    wav2vec_feature_extractor, audio_encoder = custom_init('cpu', args.wav2vec_dir)
     args.audio_save_dir = os.path.join(args.audio_save_dir, input_data['cond_video'].split('/')[-1].split('.')[0])
-    os.makedirs(args.audio_save_dir,exist_ok=True)
-    
+    os.makedirs(args.audio_save_dir, exist_ok=True)
+
     conds_list = []
 
     if args.scene_seg and is_video(input_data['cond_video']):
         time_list, cond_list = shot_detect(input_data['cond_video'], args.audio_save_dir)
-        if len(time_list)==0:
+        if len(time_list) == 0:
             conds_list.append([input_data['cond_video']])
             conds_list.append([input_data['cond_audio']['person1']])
-            if len(input_data['cond_audio'])==2:
+            if len(input_data['cond_audio']) == 2:
                 conds_list.append([input_data['cond_audio']['person2']])
         else:
             audio1_list = split_wav_librosa(input_data['cond_audio']['person1'], time_list, args.audio_save_dir)
             conds_list.append(cond_list)
             conds_list.append(audio1_list)
-            if len(input_data['cond_audio'])==2:
+            if len(input_data['cond_audio']) == 2:
                 audio2_list = split_wav_librosa(input_data['cond_audio']['person2'], time_list, args.audio_save_dir)
                 conds_list.append(audio2_list)
     else:
         conds_list.append([input_data['cond_video']])
         conds_list.append([input_data['cond_audio']['person1']])
-        if len(input_data['cond_audio'])==2:
+        if len(input_data['cond_audio']) == 2:
             conds_list.append([input_data['cond_audio']['person2']])
 
-    if len(input_data['cond_audio'])==2:
-        new_human_speech1, new_human_speech2, sum_human_speechs = audio_prepare_multi(input_data['cond_audio']['person1'], input_data['cond_audio']['person2'], input_data['audio_type'])
+    if len(input_data['cond_audio']) == 2:
+        new_human_speech1, new_human_speech2, sum_human_speechs = audio_prepare_multi(
+            input_data['cond_audio']['person1'], input_data['cond_audio']['person2'], input_data['audio_type'])
         sum_audio = os.path.join(args.audio_save_dir, 'sum_all.wav')
         sf.write(sum_audio, sum_human_speechs, 16000)
         input_data['video_audio'] = sum_audio
@@ -589,7 +596,7 @@ def generate(args):
         sf.write(sum_audio, human_speech, 16000)
         input_data['video_audio'] = sum_audio
     logging.info("Generating video ...")
-        
+
     for idx, items in enumerate(zip(*conds_list)):
         print(items)
         input_clip = {}
@@ -601,9 +608,10 @@ def generate(args):
         if 'bbox' in input_data:
             input_clip['bbox'] = input_data['bbox']
         cond_audio = {}
-        if args.audio_mode=='localfile':
-            if len(input_data['cond_audio'])==2:
-                new_human_speech1, new_human_speech2, sum_human_speechs = audio_prepare_multi(items[1], items[2], input_data['audio_type'])
+        if args.audio_mode == 'localfile':
+            if len(input_data['cond_audio']) == 2:
+                new_human_speech1, new_human_speech2, sum_human_speechs = audio_prepare_multi(items[1], items[2],
+                                                                                              input_data['audio_type'])
                 audio_embedding_1 = get_embedding(new_human_speech1, wav2vec_feature_extractor, audio_encoder)
                 audio_embedding_2 = get_embedding(new_human_speech2, wav2vec_feature_extractor, audio_encoder)
                 emb1_path = os.path.join(args.audio_save_dir, '1.pt')
@@ -616,7 +624,7 @@ def generate(args):
                 cond_audio['person2'] = emb2_path
                 input_clip['video_audio'] = sum_audio
                 v_length = audio_embedding_1.shape[0]
-            elif len(input_data['cond_audio'])==1:
+            elif len(input_data['cond_audio']) == 1:
                 human_speech = audio_prepare_single(items[1])
                 audio_embedding = get_embedding(human_speech, wav2vec_feature_extractor, audio_encoder)
                 emb_path = os.path.join(args.audio_save_dir, '1.pt')
@@ -626,9 +634,9 @@ def generate(args):
                 cond_audio['person1'] = emb_path
                 input_clip['video_audio'] = sum_audio
                 v_length = audio_embedding.shape[0]
-        
+
         input_clip['cond_audio'] = cond_audio
-                    
+
         video = wan_i2v.generate_infinitetalk(
             input_clip,
             size_buckget=args.size,
@@ -641,24 +649,23 @@ def generate(args):
             seed=args.base_seed,
             offload_model=args.offload_model,
             max_frames_num=args.frame_num if args.mode == 'clip' else args.max_frame_num,
-            color_correction_strength = args.color_correction_strength,
+            color_correction_strength=args.color_correction_strength,
             extra_args=args,
-            )
-        
+        )
+
         generated_list.append(video)
 
     if rank == 0:
-        
+
         if args.save_file is None:
             formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            formatted_prompt = input_clip['prompt'].replace(" ", "_").replace("/",
-                                                                        "_")[:50]
-            args.save_file = f"{args.task}_{args.size.replace('*','x') if sys.platform=='win32' else args.size}_{args.ulysses_size}_{args.ring_size}_{formatted_prompt}_{formatted_time}"
-        
+            formatted_prompt = input_clip['prompt'].replace(" ", "_").replace("/", "_")[:50]
+            args.save_file = f"{args.task}_{args.size.replace('*', 'x') if sys.platform == 'win32' else args.size}_{args.ulysses_size}_{args.ring_size}_{formatted_prompt}_{formatted_time}"
+
         sum_video = torch.cat(generated_list, dim=1)
         save_video_ffmpeg(sum_video, args.save_file, [input_data['video_audio']], high_quality_save=False)
-   
-    logging.info(f"Saving generated video to {args.save_file}.mp4")  
+
+    logging.info(f"Saving generated video to {args.save_file}.mp4")
     logging.info("Finished.")
 
 
