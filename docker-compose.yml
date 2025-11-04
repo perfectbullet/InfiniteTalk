@@ -1,18 +1,16 @@
+# docker-compose.yml
 name: Infinitetalk
 
 services:
+
   infinitetalk:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#      args:
-#        CONDA_ENV_NAME: infinitetalk
     image: infinitetalk:v2
     container_name: infinitetalk_v2
     # 端口映射
     ports:
       - "50007:50007"
       - "50008:50008"
+      - "8000:8000"  # API 服务端口
     # RTX 5090 GPU 支持
     deploy:
       resources:
@@ -26,23 +24,30 @@ services:
       - LANG=C.UTF-8
       - PYTHONUNBUFFERED=1
       - CUDA_LAUNCH_BLOCKING=0
-#      - TORCH_CUDA_ARCH_LIST=5.0;6.0;7.0;7.5;8.0;8.6;9.0;12.0
-#      - ESPEAK_DATA_PATH=/usr/share/espeak-ng-data
+      # MongoDB 连接配置
+      - MONGO_URL=mongodb://admin:infinitetalk123@mongodb:27017/infinitetalk_db?authSource=admin
+      - MONGO_DB_NAME=infinitetalk_db
     volumes:
       # 时区同步
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      # 代码目录（开发模式）
-#      - /home/user/metahuman_work/InfiniteTalk:/workspace/InfiniteTalk
       # 权重目录（持久化）
       - ./weights:/workspace/InfiniteTalk/weights
       # 示例文件
       - ./examples:/workspace/InfiniteTalk/examples
       # 输出目录
       - ./outputs:/workspace/InfiniteTalk/outputs
+      # 上传文件目录
+      - ./upload_image:/workspace/InfiniteTalk/upload_image
+      - ./audio_file:/workspace/InfiniteTalk/audio_file
+      - ./output_videos:/workspace/InfiniteTalk/output_videos
+      - ./save_audio:/workspace/InfiniteTalk/save_audio
       # Hugging Face 缓存（可选）
       - ~/.cache/huggingface:/root/.cache/huggingface
+      # 代码文件
       - ./app.py:/workspace/InfiniteTalk/app.py
+      - ./api_server.py:/workspace/InfiniteTalk/api_server.py
+      - ./database.py:/workspace/InfiniteTalk/database.py
       - ./generate_infinitetalk.py:/workspace/InfiniteTalk/generate_infinitetalk.py
       - ./wan:/workspace/InfiniteTalk/wan
       - ./tools:/workspace/InfiniteTalk/tools
@@ -56,20 +61,48 @@ services:
     restart: unless-stopped
     # 共享内存（重要！）
     shm_size: '32gb'
-    # IPC 模式
-    # ipc: host
     # 网络
     networks:
       - infinitetalk-net
-    # 用户权限（可选，与宿主机用户一致）
-    # user: "${UID}:${GID}"
-  # 健康检查
+    # 依赖 MongoDB 服务
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    # 健康检查
     healthcheck:
       test: ["CMD", "python", "-c", "import torch; print(torch.cuda.is_available())"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  mongodb:
+    image: mongo:7.0
+    container_name: infinitetalk_mongodb
+    ports:
+      - "27017:27017"  # 暴露端口供外部访问（可选）
+    environment:
+      - TZ=Asia/Shanghai
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=infinitetalk123
+      - MONGO_INITDB_DATABASE=infinitetalk_db
+    volumes:
+      # 使用命名数据卷存储 MongoDB 数据
+      - infinitetalk_mongodb_data:/data/db
+      # 使用命名数据卷存储 MongoDB 配置
+      - infinitetalk_mongodb_config:/data/configdb
+      # 初始化脚本（使用绑定挂载）
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - infinitetalk-net
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 networks:
   infinitetalk-net:
     driver: bridge
