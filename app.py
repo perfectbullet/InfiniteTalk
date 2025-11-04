@@ -254,7 +254,11 @@ def _parse_args():
 
 
 def custom_init(device, wav2vec):    
-    audio_encoder = Wav2Vec2Model.from_pretrained(wav2vec, local_files_only=True).to(device)
+    audio_encoder = Wav2Vec2Model.from_pretrained(
+        wav2vec,
+        local_files_only=True,
+        attn_implementation="eager"  # 添加这一行
+    ).to(device)
     audio_encoder.feature_extractor._freeze_parameters()
     wav2vec_feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(wav2vec, local_files_only=True)
     return wav2vec_feature_extractor, audio_encoder
@@ -808,7 +812,7 @@ def run_graio_demo(args):
             inputs=[img2vid_image, vid2vid_vid, task_mode, img2vid_prompt, n_prompt, img2vid_audio_1, img2vid_audio_2,sd_steps, seed, text_guide_scale, audio_guide_scale, mode_selector, tts_text, resolution_select, human1_voice, human2_voice],
             outputs=[result_gallery],
         )
-    demo.launch(server_name="0.0.0.0", debug=True, server_port=8418)
+    demo.launch(server_name="0.0.0.0", debug=True, server_port=50007)
 
         
 
