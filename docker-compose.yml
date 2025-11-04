@@ -1,0 +1,75 @@
+name: Infinitetalk
+
+services:
+  infinitetalk:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#      args:
+#        CONDA_ENV_NAME: infinitetalk
+    image: infinitetalk:v2
+    container_name: infinitetalk_v2
+    # 端口映射
+    ports:
+      - "50007:50007"
+      - "50008:50008"
+    # RTX 5090 GPU 支持
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility]
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      - CUDA_LAUNCH_BLOCKING=0
+#      - TORCH_CUDA_ARCH_LIST=5.0;6.0;7.0;7.5;8.0;8.6;9.0;12.0
+#      - ESPEAK_DATA_PATH=/usr/share/espeak-ng-data
+    volumes:
+      # 时区同步
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      # 代码目录（开发模式）
+#      - /home/user/metahuman_work/InfiniteTalk:/workspace/InfiniteTalk
+      # 权重目录（持久化）
+      - ./weights:/workspace/InfiniteTalk/weights
+      # 示例文件
+      - ./examples:/workspace/InfiniteTalk/examples
+      # 输出目录
+      - ./outputs:/workspace/InfiniteTalk/outputs
+      # Hugging Face 缓存（可选）
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - ./app.py:/workspace/InfiniteTalk/app.py
+      - ./generate_infinitetalk.py:/workspace/InfiniteTalk/generate_infinitetalk.py
+      - ./wan:/workspace/InfiniteTalk/wan
+      - ./tools:/workspace/InfiniteTalk/tools
+      - ./src:/workspace/InfiniteTalk/src
+      - ./kokoro:/workspace/InfiniteTalk/kokoro
+      - ./assets:/workspace/InfiniteTalk/assets
+      - ./wheel_packages:/workspace/InfiniteTalk/wheel_packages
+    working_dir: /workspace/InfiniteTalk
+    # 启动命令
+    command: tail -f /dev/null
+    restart: unless-stopped
+    # 共享内存（重要！）
+    shm_size: '32gb'
+    # IPC 模式
+    # ipc: host
+    # 网络
+    networks:
+      - infinitetalk-net
+    # 用户权限（可选，与宿主机用户一致）
+    # user: "${UID}:${GID}"
+  # 健康检查
+    healthcheck:
+      test: ["CMD", "python", "-c", "import torch; print(torch.cuda.is_available())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+networks:
+  infinitetalk-net:
+    driver: bridge
