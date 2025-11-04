@@ -1,0 +1,7 @@
+# requirements_api.txt
+fastapi
+uvicorn[standard]
+motor
+pymongo
+python-multipart
+aiofiles
