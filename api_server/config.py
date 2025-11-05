@@ -30,6 +30,30 @@ class Config:
     MONGO_MIN_POOL_SIZE = 10
     MONGO_SERVER_SELECTION_TIMEOUT = 5000  # 毫秒
 
+    # ==================== 日志配置 ====================
+
+    # 日志级别（从环境变量或配置获取）
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+    # loguru 格式（注意：不要使用标准库的 % 格式）
+    CONSOLE_FORMAT = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+        "<level>{message}</level>"
+    )
+
+    FILE_FORMAT = (
+        "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
+        "{level: <8} | "
+        "{name}:{function}:{line} | "
+        "{message}"
+    )
+
+    # 日志目录和文件
+    LOG_DIR = BASE_DIR / "logs"
+    LOG_FILE = LOG_DIR / "infinitetalk.log"
+
     # ==================== 目录配置 ====================
     # 上传目录
     UPLOAD_IMAGE_DIR = BASE_DIR / "upload_image"
@@ -188,19 +212,6 @@ class Config:
     AUTO_CLEANUP_TASKS = True
     TASK_RETENTION_DAYS = 7  # 保留天数
 
-    # ==================== 日志配置 ====================
-    # 日志级别
-    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
-    # 日志格式
-    LOG_FORMAT = "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)d] - %(message)s"
-    LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-    # 日志文件
-    LOG_DIR = BASE_DIR / "logs"
-    LOG_FILE = LOG_DIR / "infinitetalk.log"
-    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT = 5
 
     # ==================== 性能优化配置 ====================
     # 缓存配置

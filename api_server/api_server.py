@@ -1,5 +1,3 @@
-import sys
-import os
 import asyncio
 import shutil
 import uuid
