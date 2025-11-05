@@ -353,6 +353,55 @@ class DatabaseManager:
         self.logger.info(f"Cleaned up {result.deleted_count} old tasks")
         return result.deleted_count
 
+    # ==================== 数据库管理器更新方法 ====================
+    # 在 db_manager 中添加以下方法：
+
+    async def update_task_status(
+            self,
+            task_id: str,
+            status: str,
+            pid: Optional[int] = None,
+            started_at: Optional[datetime] = None,
+            ended_at: Optional[datetime] = None,
+            video_path: Optional[str] = None,
+            video_url: Optional[str] = None,
+            error_message: Optional[str] = None
+    ):
+        """
+        更新任务状态
+
+        Args:
+            task_id: 任务 ID
+            status: 状态
+            pid: 进程 ID
+            started_at: 开始时间
+            ended_at: 结束时间
+            video_path: 视频路径
+            video_url: 视频下载链接
+            error_message: 错误信息
+        """
+        update_data = {
+            'status': status,
+            'updated_at': datetime.now()
+        }
+
+        if pid is not None:
+            update_data['pid'] = pid
+        if started_at is not None:
+            update_data['started_at'] = started_at
+        if ended_at is not None:
+            update_data['ended_at'] = ended_at
+        if video_path is not None:
+            update_data['video_path'] = video_path
+        if video_url is not None:
+            update_data['video_url'] = video_url
+        if error_message is not None:
+            update_data['error_message'] = error_message
+
+        await self.db[config.COLLECTION_TASKS].update_one(
+            {'task_id': task_id},
+            {'$set': update_data}
+        )
 
 # 创建全局数据库管理器实例
 db_manager = DatabaseManager()

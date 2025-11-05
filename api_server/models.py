@@ -37,3 +37,8 @@ class TaskInfo(BaseModel):
     task_failed: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
+    # 新增字段
+    pid: Optional[int] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    task_execute_info: Optional[str] = None

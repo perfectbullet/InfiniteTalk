@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from api_server.api_loger import logger
 from api_server.config import config
 from api_server.database import db_manager
-from api_server.video_task_worker import video_engine, video_task_worker, wan_pipeline
+from api_server.video_task_worker import video_task_worker
 from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
 from api_server.utils import generate_unique_filename, validate_file_size
 
@@ -39,9 +39,6 @@ async def lifespan(app: FastAPI):
         logger.info("Connecting to database...")
         await db_manager.connect()
         logger.info("✓ Database connected")
-        # 初始化视频引擎
-        if config.PRELOAD_MODELS:
-            await video_engine.initialize()
         # 启动任务处理器
         asyncio.create_task(video_task_worker.start())
 
@@ -421,17 +418,8 @@ async def create_video_task(
             raise HTTPException(status_code=400, detail="Image file not found")
         if not Path(audio_path).exists():
             raise HTTPException(status_code=400, detail="Audio file not found")
-
-        # 检查模型是否已加载
-        if video_engine.pipeline is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Models not loaded. Please wait for initialization."
-            )
-
         # 创建任务ID
         task_id = f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-
         # 保存任务到数据库
         await db_manager.create_task(
             task_id=task_id,
@@ -439,16 +427,12 @@ async def create_video_task(
             image_path=image_path,
             audio_path=audio_path
         )
-
         # 添加到任务队列
         await video_task_worker.add_task(task_id)
-
         logger.info(f"Task created: {task_id}")
-
         # 返回任务信息
         task_info = await db_manager.get_task_by_id(task_id)
         return task_info
-
     except HTTPException:
         raise
     except Exception as e:
@@ -496,27 +480,22 @@ async def delete_task(task_id: str):
         task_doc = await db_manager.get_task_by_id(task_id)
         if not task_doc:
             raise HTTPException(status_code=404, detail="Task not found")
-
         # 删除视频文件（如果存在）
         if task_doc.get('video_path'):
             video_path = Path(task_doc['video_path'])
             if video_path.exists():
                 video_path.unlink()
-
         # 删除音频保存目录
         task_audio_dir = config.AUDIO_SAVE_DIR / task_id
         if task_audio_dir.exists():
             shutil.rmtree(task_audio_dir)
-
         # 删除数据库记录
         success = await db_manager.delete_task(task_id)
-
         if success:
             logger.info(f"Task deleted: {task_id}")
             return {"success": True, "message": "Task deleted successfully"}
         else:
             raise HTTPException(status_code=500, detail="Failed to delete task")
-
     except HTTPException:
         raise
     except Exception as e:
@@ -525,7 +504,6 @@ async def delete_task(task_id: str):
 
 
 # ==================== 系统相关接口 ====================
-
 # 18. 健康检查
 @app.get("/health")
 async def health_check():
@@ -535,7 +513,6 @@ async def health_check():
         "project": config.PROJECT_NAME,
         "version": config.VERSION,
         "environment": config.ENVIRONMENT,
-        "models_loaded": wan_pipeline is not None,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -550,7 +527,6 @@ async def get_system_info():
         "api_version": config.API_VERSION,
         "environment": config.ENVIRONMENT,
         "models": {
-            "loaded": wan_pipeline is not None,
             "model_size": config.MODEL_SIZE,
             "quantization": config.MODEL_QUANT,
         },
