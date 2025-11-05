@@ -14,7 +14,8 @@ from api_server.database import db_manager
 from generate_infinitetalk import (
     audio_prepare_single,
     get_embedding,
-    custom_init
+    custom_init,
+    _parse_args
 )
 from wan.configs import WAN_CONFIGS
 from wan.utils.multitalk_utils import save_video_ffmpeg
@@ -23,7 +24,6 @@ from wan.utils.multitalk_utils import save_video_ffmpeg
 wan_pipeline = None
 wav2vec_feature_extractor = None
 audio_encoder = None
-
 
 async def init_models():
     """初始化InfiniteTalk模型"""
@@ -154,11 +154,13 @@ class VideoEngine:
                     logger.info(f"Task {task_id}: 开始视频生成")
                     gen_config = config.get_generation_config()
 
+                    extra_args = config.get_extra_args()
+
                     video_tensor = self.pipeline.generate_infinitetalk(
                         input_clip,
                         size_buckget=config.MODEL_SIZE,
                         **gen_config,
-                        extra_args=None,
+                        extra_args=extra_args,
                     )
 
                     # 5. 保存视频

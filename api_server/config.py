@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from typing import Type
+
 
 class Config:
     """基础配置类"""
@@ -60,12 +62,18 @@ class Config:
     # 量化模型权重
     QUANT_DIR = WEIGHTS_DIR / "InfiniteTalk" / "quant_models" / "infinitetalk_single_fp8.safetensors"
 
+    # DiT 模型路径（可选）
+    DIT_PATH = None
+
     # ==================== 模型配置 ====================
+    # 任务类型
+    TASK = "infinitetalk-14B"
+
     # 模型大小配置
     MODEL_SIZE = "infinitetalk-480"  # 可选: infinitetalk-480, infinitetalk-720
 
     # 量化类型
-    MODEL_QUANT = "fp8"  # 可选: fp8, bf16, fp16
+    MODEL_QUANT = "fp8"  # 可选: fp8, int8, bf16, fp16, None
 
     # 模型设备配置
     MODEL_DEVICE_ID = 0  # GPU 设备 ID
@@ -76,36 +84,66 @@ class Config:
     USE_DIT_FSDP = False
     USE_T5_CPU = False
 
+    # 并行配置
+    ULYSSES_SIZE = 1  # DiT 中的 Ulysses 并行大小
+    RING_SIZE = 1  # DiT 中的 Ring Attention 并行大小
+
     # USP 配置
     USE_USP = False
 
     # LoRA 配置
-    LORA_DIR = None
-    LORA_SCALES = [1.2]
+    LORA_DIR = None  # 可以是单个路径或路径列表
+    LORA_SCALES = [1.2]  # 对应每个 LoRA 的缩放因子
+
+    # DiT 参数持久化配置
+    NUM_PERSISTENT_PARAM_IN_DIT = None  # 显存中保留的最大参数量
 
     # ==================== 生成参数配置 ====================
     # 视频生成参数
-    MOTION_FRAME = 9  # 运动帧数
-    FRAME_NUM = 81  # 总帧数
-    MAX_FRAMES_NUM = 81  # 最大帧数（clip模式）
+    MOTION_FRAME = 9  # 运动帧数（长视频生成模式使用）
+    FRAME_NUM = 81  # 单个片段生成的帧数（应该是 4n+1）
+    MAX_FRAMES_NUM = 1000  # 生成视频的最大帧长度
+
+    # 生成模式
+    GENERATION_MODE = "clip"  # 可选: clip（生成一个视频片段）, streaming（长视频生成）
 
     # 采样参数
-    SAMPLE_SHIFT = 7  # 采样偏移
+    SAMPLE_SHIFT = 7.0  # Flow matching 调度器的采样偏移因子
     SAMPLE_STEPS = 40  # 采样步数
 
     # 引导参数
-    TEXT_GUIDE_SCALE = 5.0  # 文本引导强度
-    AUDIO_GUIDE_SCALE = 4.0  # 音频引导强度
+    TEXT_GUIDE_SCALE = 5.0  # 文本控制的分类器自由引导强度
+    AUDIO_GUIDE_SCALE = 4.0  # 音频控制的分类器自由引导强度
 
-    # 其他生成参数
-    DEFAULT_SEED = 42
-    COLOR_CORRECTION_STRENGTH = 1.0
-    OFFLOAD_MODEL = True  # 是否卸载模型以节省显存
+    # 种子配置
+    DEFAULT_SEED = 42  # 基础随机种子
+    SEED = None  # 当前使用的种子（None 表示使用 DEFAULT_SEED）
+
+    # 颜色校正
+    COLOR_CORRECTION_STRENGTH = 1.0  # 颜色校正强度 [0.0 -- 1.0]
+
+    # 模型卸载
+    OFFLOAD_MODEL = True  # 是否在每次模型前向传播后卸载到 CPU 以减少显存使用
+
+    # 高质量保存
     HIGH_QUALITY_SAVE = False  # 高质量保存
+
+    # ==================== TeaCache 配置 ====================
+    USE_TEACACHE = False  # 启用 TeaCache 加速视频生成
+    TEACACHE_THRESH = 0.2  # TeaCache 阈值
+
+    # ==================== APG (自适应投影引导) 配置 ====================
+    USE_APG = False  # 启用自适应投影引导
+    APG_MOMENTUM = -0.75  # APG 动量
+    APG_NORM_THRESHOLD = 55  # APG 范数阈值
 
     # ==================== 音频处理配置 ====================
     AUDIO_SAMPLE_RATE = 16000  # 音频采样率
     AUDIO_LOUDNESS_NORM = True  # 是否进行响度归一化
+    AUDIO_MODE = "localfile"  # 可选: localfile（本地 wav 文件）, tts（TTS 生成）
+
+    # ==================== 场景分割配置 ====================
+    SCENE_SEGMENTATION = False  # 为输入视频启用场景分割
 
     # ==================== API 服务配置 ====================
     # 服务器配置
@@ -207,10 +245,12 @@ class Config:
     def get_model_config(cls) -> dict:
         """获取模型配置字典"""
         return {
-            "ckpt_dir": str(cls.MODEL_CKPT_DIR),
-            "wav2vec_dir": str(cls.WAV2VEC_DIR),
-            "infinitetalk_dir": str(cls.INFINITETALK_DIR),
-            "quant_dir": str(cls.QUANT_DIR),
+            "task": cls.TASK,
+            "ckpt_dir": str(cls.MODEL_CKPT_DIR) if cls.MODEL_CKPT_DIR else None,
+            "wav2vec_dir": str(cls.WAV2VEC_DIR) if cls.WAV2VEC_DIR else None,
+            "infinitetalk_dir": str(cls.INFINITETALK_DIR) if cls.INFINITETALK_DIR else None,
+            "quant_dir": str(cls.QUANT_DIR) if cls.QUANT_DIR else None,
+            "dit_path": str(cls.DIT_PATH) if cls.DIT_PATH else None,
             "size": cls.MODEL_SIZE,
             "quant": cls.MODEL_QUANT,
             "device_id": cls.MODEL_DEVICE_ID,
@@ -221,6 +261,10 @@ class Config:
             "use_usp": cls.USE_USP,
             "lora_dir": cls.LORA_DIR,
             "lora_scales": cls.LORA_SCALES,
+            "offload_model": cls.OFFLOAD_MODEL,
+            "ulysses_size": cls.ULYSSES_SIZE,
+            "ring_size": cls.RING_SIZE,
+            "num_persistent_param_in_dit": cls.NUM_PERSISTENT_PARAM_IN_DIT,
         }
 
     @classmethod
@@ -229,15 +273,31 @@ class Config:
         return {
             "motion_frame": cls.MOTION_FRAME,
             "frame_num": cls.FRAME_NUM,
+            "max_frames_num": cls.MAX_FRAMES_NUM,
             "shift": cls.SAMPLE_SHIFT,
             "sampling_steps": cls.SAMPLE_STEPS,
             "text_guide_scale": cls.TEXT_GUIDE_SCALE,
             "audio_guide_scale": cls.AUDIO_GUIDE_SCALE,
-            "seed": cls.DEFAULT_SEED,
+            "seed": cls.SEED if cls.SEED is not None else cls.DEFAULT_SEED,
             "offload_model": cls.OFFLOAD_MODEL,
-            "max_frames_num": cls.MAX_FRAMES_NUM,
             "color_correction_strength": cls.COLOR_CORRECTION_STRENGTH,
+            "mode": cls.GENERATION_MODE,
         }
+
+    @classmethod
+    def get_extra_args(cls):
+        """获取额外参数（类似 argparse.Namespace）"""
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            use_teacache=cls.USE_TEACACHE,
+            teacache_thresh=cls.TEACACHE_THRESH,
+            use_apg=cls.USE_APG,
+            apg_momentum=cls.APG_MOMENTUM,
+            apg_norm_threshold=cls.APG_NORM_THRESHOLD,
+            seed=cls.SEED if cls.SEED is not None else cls.DEFAULT_SEED,
+            audio_mode=cls.AUDIO_MODE,
+            scene_seg=cls.SCENE_SEGMENTATION,
+        )
 
     @classmethod
     def validate_config(cls):
@@ -249,15 +309,23 @@ class Config:
             errors.append(f"Weights directory not found: {cls.WEIGHTS_DIR}")
 
         # 检查模型文件
-        if not cls.MODEL_CKPT_DIR.exists():
+        if cls.MODEL_CKPT_DIR and not cls.MODEL_CKPT_DIR.exists():
             errors.append(f"Model checkpoint directory not found: {cls.MODEL_CKPT_DIR}")
 
-        if not cls.WAV2VEC_DIR.exists():
+        if cls.WAV2VEC_DIR and not cls.WAV2VEC_DIR.exists():
             errors.append(f"Wav2Vec directory not found: {cls.WAV2VEC_DIR}")
 
         # 检查 MongoDB URL
         if not cls.MONGO_URL:
             errors.append("MONGO_URL is not set")
+
+        # 检查量化类型
+        if cls.MODEL_QUANT and cls.MODEL_QUANT not in ['int8', 'fp8', 'bf16', 'fp16']:
+            errors.append(f"Invalid quantization type: {cls.MODEL_QUANT}")
+
+        # 检查 frame_num
+        if (cls.FRAME_NUM - 1) % 4 != 0:
+            errors.append(f"FRAME_NUM should be 4n+1, got {cls.FRAME_NUM}")
 
         if errors:
             raise ValueError(f"Configuration validation failed:\n" + "\n".join(errors))
@@ -290,7 +358,7 @@ class TestingConfig(Config):
 
 
 # 根据环境变量选择配置
-def get_config() -> Config:
+def get_config() -> Type[Config]:
     """根据环境变量获取配置"""
     env = os.getenv("ENVIRONMENT", "development").lower()
 
