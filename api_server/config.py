@@ -1,8 +1,3 @@
-# config.py
-"""
-InfiniteTalk 统一配置文件
-所有配置项集中管理
-"""
 import os
 from pathlib import Path
 
@@ -11,7 +6,7 @@ class Config:
     """基础配置类"""
 
     # ==================== 项目基础配置 ====================
-    BASE_DIR = Path(__file__).parent
+    BASE_DIR = Path(__file__).parent.parent
     PROJECT_NAME = "InfiniteTalk"
     VERSION = "2.0.0"
 
@@ -115,7 +110,7 @@ class Config:
     # ==================== API 服务配置 ====================
     # 服务器配置
     API_HOST = "0.0.0.0"
-    API_PORT = 8000
+    API_PORT = 50007
     API_WORKERS = 1
 
     # API 文档配置

@@ -1,15 +1,13 @@
-# database.py
-"""
-数据库操作模块
-使用统一配置管理
-"""
 import logging
-from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from bson import ObjectId
+from typing import List
 
-from config import config
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
+from api_server.config import config
+from api_server.models import TaskInfo
+from typing import Optional, Dict, Any
 
 
 class DatabaseManager:
@@ -260,16 +258,20 @@ class DatabaseManager:
         await self.db[config.COLLECTION_TASKS].insert_one(task_doc)
         return task_id
 
-    async def get_task_by_id(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """根据 ID 查询任务"""
+    async def get_task_by_id(self, task_id: str) -> Optional[TaskInfo]:
+        """根据 ID 查询任务，返回 TaskInfo 对象"""
         try:
             task_doc = await self.db[config.COLLECTION_TASKS].find_one(
                 {"_id": task_id}
             )
             if task_doc:
+                # 转换 _id 为 id
                 task_doc["id"] = task_doc["_id"]
                 del task_doc["_id"]
-            return task_doc
+
+                # 转换为 Pydantic 模型
+                return TaskInfo(**task_doc)
+            return None
         except Exception as e:
             self.logger.error(f"Error getting task {task_id}: {e}")
             return None

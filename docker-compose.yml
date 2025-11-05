@@ -6,12 +6,9 @@ services:
   infinitetalk:
     image: infinitetalk:v2
     container_name: infinitetalk_v2
-    # 端口映射
     ports:
       - "50007:50007"
       - "50008:50008"
-      - "8000:8000"  # API 服务端口
-    # RTX 5090 GPU 支持
     deploy:
       resources:
         reservations:
@@ -31,30 +28,9 @@ services:
       # 时区同步
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      # 权重目录（持久化）
-      - ./weights:/workspace/InfiniteTalk/weights
-      # 示例文件
-      - ./examples:/workspace/InfiniteTalk/examples
-      # 输出目录
-      - ./outputs:/workspace/InfiniteTalk/outputs
-      # 上传文件目录
-      - ./upload_image:/workspace/InfiniteTalk/upload_image
-      - ./audio_file:/workspace/InfiniteTalk/audio_file
-      - ./output_videos:/workspace/InfiniteTalk/output_videos
-      - ./save_audio:/workspace/InfiniteTalk/save_audio
+      - /home/user/metahuman_work/InfiniteTalk:/workspace/InfiniteTalk
       # Hugging Face 缓存（可选）
       - ~/.cache/huggingface:/root/.cache/huggingface
-      # 代码文件
-      - ./app.py:/workspace/InfiniteTalk/app.py
-      - ./api_server.py:/workspace/InfiniteTalk/api_server.py
-      - ./database.py:/workspace/InfiniteTalk/database.py
-      - ./generate_infinitetalk.py:/workspace/InfiniteTalk/generate_infinitetalk.py
-      - ./wan:/workspace/InfiniteTalk/wan
-      - ./tools:/workspace/InfiniteTalk/tools
-      - ./src:/workspace/InfiniteTalk/src
-      - ./kokoro:/workspace/InfiniteTalk/kokoro
-      - ./assets:/workspace/InfiniteTalk/assets
-      - ./wheel_packages:/workspace/InfiniteTalk/wheel_packages
     working_dir: /workspace/InfiniteTalk
     # 启动命令
     command: tail -f /dev/null
@@ -79,8 +55,6 @@ services:
   mongodb:
     image: mongo:7.0
     container_name: infinitetalk_mongodb
-    ports:
-      - "27017:27017"  # 暴露端口供外部访问（可选）
     environment:
       - TZ=Asia/Shanghai
       - MONGO_INITDB_ROOT_USERNAME=admin

@@ -1,9 +1,6 @@
-# api_server.py
-"""
-InfiniteTalk API Server
-提供完整的视频生成 API 服务
-"""
-
+import sys
+import os
+import asyncio
 import shutil
 import uuid
 from contextlib import asynccontextmanager
@@ -14,51 +11,13 @@ from typing import Optional, List
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 
-from api_loger import logger
-# 导入配置和数据库
-from config import config
-from database import db_manager
-from video_task_worker import video_engine, video_task_worker, wan_pipeline
-
-
-# ==================== 数据模型 ====================
-class ImageInfo(BaseModel):
-    id: str
-    person_name: str
-    image_name: str
-    image_path: str
-    created_at: datetime
-
-
-class PromptInfo(BaseModel):
-    id: str
-    title: str
-    content: str
-    created_at: datetime
-
-
-class AudioInfo(BaseModel):
-    id: str
-    audio_path: str
-    audio_text: str
-    original_filename: str
-    created_at: datetime
-
-
-class TaskInfo(BaseModel):
-    id: str
-    status: str
-    prompt: str
-    image_path: str
-    audio_path: str
-    video_path: Optional[str] = None
-    video_download_url: Optional[str] = None
-    task_failed: Optional[str] = None
-    created_at: datetime
-    completed_at: Optional[datetime] = None
-
+from api_server.api_loger import logger
+from api_server.config import config
+from api_server.database import db_manager
+from api_server.video_task_worker import video_engine, video_task_worker, wan_pipeline
+from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
+from api_server.utils import generate_unique_filename, validate_file_size
 
 # ==================== 生命周期管理 ====================
 @asynccontextmanager
@@ -80,6 +39,11 @@ async def lifespan(app: FastAPI):
         logger.info("Connecting to database...")
         await db_manager.connect()
         logger.info("✓ Database connected")
+        # 初始化视频引擎
+        if config.PRELOAD_MODELS:
+            await video_engine.initialize()
+        # 启动任务处理器
+        asyncio.create_task(video_task_worker.start())
 
         logger.info("=" * 60)
         logger.info(f"{config.PROJECT_NAME} API server started successfully")
@@ -97,6 +61,10 @@ async def lifespan(app: FastAPI):
     await db_manager.disconnect()
     logger.info("Server shutdown complete")
 
+    # 关闭时
+    logger.info("Shutting down video_task_worker...")
+    await video_task_worker.stop()
+    logger.info("Shutting down video_task_worker complete")
 
 # ==================== 创建 FastAPI 应用 ====================
 app = FastAPI(
@@ -118,25 +86,6 @@ if config.ENABLE_CORS:
     )
 
 
-# ==================== 辅助函数 ====================
-def generate_unique_filename(prefix: str, extension: str) -> str:
-    """生成唯一文件名"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = uuid.uuid4().hex[:8]
-    return f"{prefix}_{timestamp}_{unique_id}{extension}"
-
-
-def validate_file_size(file: UploadFile, max_size: int):
-    """验证文件大小"""
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    file.file.seek(0)
-
-    if file_size > max_size:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File size ({file_size} bytes) exceeds maximum allowed size ({max_size} bytes)"
-        )
 
 
 # ==================== API 接口 ====================
@@ -457,9 +406,7 @@ async def download_file(file_type: str, filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 14. 创建视频生成任务
 # ==================== 视频生成相关接口 ====================
-
 # 14. 创建视频生成任务
 @app.post("/api/tasks/create", response_model=TaskInfo)
 async def create_video_task(
@@ -689,7 +636,7 @@ async def root():
 
 
 # ==================== 启动服务 ====================
-if __name__ == "__main__":
+def main():
     import uvicorn
 
     uvicorn.run(

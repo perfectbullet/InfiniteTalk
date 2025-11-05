@@ -7,9 +7,9 @@ import torch
 
 # 导入原有的生成逻辑
 import wan
-from api_loger import logger
-from config import config
-from database import db_manager
+from api_server.api_loger import logger
+from api_server.config import config
+from api_server.database import db_manager
 # 从原文件导入需要的函数
 from generate_infinitetalk import (
     audio_prepare_single,
@@ -81,10 +81,6 @@ class VideoEngine:
         """初始化视频生成模型"""
         try:
             logger.info("正在加载视频生成模型...")
-
-            loop = asyncio.get_event_loop()
-
-            # 在线程池中加载模型
             async def load_models():
                 global wan_pipeline, wav2vec_feature_extractor, audio_encoder
 
@@ -99,12 +95,8 @@ class VideoEngine:
                         logger.info("Model preloading disabled")
 
                 return wan_pipeline, wav2vec_feature_extractor, audio_encoder
-
-            self.pipeline, self.wav2vec_feature_extractor, self.audio_encoder = \
-                await loop.run_in_executor(None, load_models)
-
+            self.pipeline, self.wav2vec_feature_extractor, self.audio_encoder = await load_models()
             logger.info("视频生成模型加载成功")
-
         except Exception as e:
             logger.error(f"模型加载失败: {e}")
             raise
