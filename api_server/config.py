@@ -96,7 +96,7 @@ class Config:
     LORA_SCALES = [1.2]  # 对应每个 LoRA 的缩放因子
 
     # DiT 参数持久化配置
-    NUM_PERSISTENT_PARAM_IN_DIT = None  # 显存中保留的最大参数量
+    NUM_PERSISTENT_PARAM_IN_DIT = 0  # 显存中保留的最大参数量
 
     # ==================== 生成参数配置 ====================
     # 视频生成参数
@@ -105,11 +105,12 @@ class Config:
     MAX_FRAMES_NUM = 1000  # 生成视频的最大帧长度
 
     # 生成模式
-    GENERATION_MODE = "clip"  # 可选: clip（生成一个视频片段）, streaming（长视频生成）
+    GENERATION_MODE = "streaming"  # 可选: clip（生成一个视频片段）, streaming（长视频生成）
 
     # 采样参数
     SAMPLE_SHIFT = 7.0  # Flow matching 调度器的采样偏移因子
     SAMPLE_STEPS = 40  # 采样步数
+    sample_text_guide_scale = 5.0  # 文本控制的分类器自由引导强度
 
     # 引导参数
     TEXT_GUIDE_SCALE = 5.0  # 文本控制的分类器自由引导强度
@@ -127,6 +128,7 @@ class Config:
 
     # 高质量保存
     HIGH_QUALITY_SAVE = False  # 高质量保存
+    base_seed = 42 # 基础随机种子The seed to use for generating the image or video.
 
     # ==================== TeaCache 配置 ====================
     USE_TEACACHE = False  # 启用 TeaCache 加速视频生成
@@ -141,6 +143,7 @@ class Config:
     AUDIO_SAMPLE_RATE = 16000  # 音频采样率
     AUDIO_LOUDNESS_NORM = True  # 是否进行响度归一化
     AUDIO_MODE = "localfile"  # 可选: localfile（本地 wav 文件）, tts（TTS 生成）
+    sample_audio_guide_scale = 4.0  # 音频控制的分类器自由引导强度
 
     # ==================== 场景分割配置 ====================
     SCENE_SEGMENTATION = False  # 为输入视频启用场景分割

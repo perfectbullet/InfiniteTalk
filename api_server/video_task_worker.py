@@ -15,7 +15,6 @@ from generate_infinitetalk import (
     audio_prepare_single,
     get_embedding,
     custom_init,
-    _parse_args
 )
 from wan.configs import WAN_CONFIGS
 from wan.utils.multitalk_utils import save_video_ffmpeg
@@ -152,14 +151,20 @@ class VideoEngine:
 
                     # 4. 生成视频
                     logger.info(f"Task {task_id}: 开始视频生成")
-                    gen_config = config.get_generation_config()
-
                     extra_args = config.get_extra_args()
-
                     video_tensor = self.pipeline.generate_infinitetalk(
                         input_clip,
                         size_buckget=config.MODEL_SIZE,
-                        **gen_config,
+                        motion_frame=config.MOTION_FRAME,
+                        frame_num=config.FRAME_NUM,
+                        shift=config.SAMPLE_SHIFT,
+                        sampling_steps=config.SAMPLE_STEPS,
+                        text_guide_scale=config.sample_text_guide_scale,
+                        audio_guide_scale=config.sample_audio_guide_scale,
+                        seed=config.base_seed,
+                        offload_model=config.OFFLOAD_MODEL,
+                        max_frames_num=config.FRAME_NUM if config.GENERATION_MODE == 'clip' else config.MAX_FRAMES_NUM,
+                        color_correction_strength=config.COLOR_CORRECTION_STRENGTH,
                         extra_args=extra_args,
                     )
 
