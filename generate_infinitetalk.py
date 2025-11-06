@@ -668,10 +668,10 @@ def generate(args):
     #     save_video_ffmpeg(sum_video, args.save_file, [input_data['video_audio']], high_quality_save=False)
 
     # 模拟执行2分支
-    time.sleep(120.0)
-    shutil.copy('infinitetalk_res_video_20251106_011032_8c10ea4e.mp4', "{args.save_file}.mp4")
+    time.sleep(30.0)
+    shutil.copy('infinitetalk_res_video_20251106_011032_8c10ea4e.mp4', f"{args.save_file}")
     # 这个日志不能删
-    logging.info(f"Generation finished.Saving generated video to {args.save_file}.mp4")
+    logging.info(f"Generation finished.Saving generated video to {args.save_file}")
     logging.info("Finished.")
 
 

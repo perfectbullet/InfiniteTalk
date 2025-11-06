@@ -316,49 +316,49 @@ class DatabaseManager:
         try:
             logger.info(f"🟢 [进入函数] update_task_status")
             logger.info(f"🟢 [参数] task_id={task_id}, status={status}, pid={pid}")
-
             # 构建更新数据
             update_data = {
                 "status": status,
-                "log_path": log_path,
                 "command": command,
-                "generate_video_file": generate_video_file,
-                "uptime": uptime
             }
-
+            if command is not None:
+                update_data["command"] = command
+            if log_path is not None:
+                update_data["log_path"] = log_path
             if pid is not None:
                 update_data["pid"] = pid
             if started_at is not None:
                 update_data["started_at"] = started_at
+                update_data["created_at"] = started_at
             if ended_at is not None:
                 update_data["ended_at"] = ended_at
+                update_data["completed_at"] = ended_at
             if error_message is not None:
                 update_data["error_message"] = error_message
             if video_path is not None:
                 update_data["video_path"] = video_path
             if video_download_url is not None:
                 update_data["video_download_url"] = video_download_url
-            # ✅ 清理数据（转换 Path 对象）
+            if uptime is not None:
+                update_data["uptime"] = uptime
+            if generate_video_file is not None:
+                update_data["generate_video_file"] = generate_video_file
+            # 清理数据（转换 Path 对象）
             update_data = self.sanitize_for_mongo(update_data)
             logger.info(f'🟢 [准备更新] 字段数量={update_data}')
-
             result = await self.db[config.COLLECTION_TASKS].update_one(
                 {"_id": task_id},
                 {"$set": update_data}
             )
-
             logger.info(f'🟢 [更新结果] matched={result.matched_count}, modified={result.modified_count}')
-
             if result.matched_count == 0:
                 logger.warning(f'⚠️ 未找到任务: {task_id}')
             else:
                 logger.info(f'✅ 任务状态更新成功: {task_id} -> {status}')
-
             return result
-
         except Exception as e:
             logger.error(f"🔴 [异常] 更新失败: {e}", exc_info=True)
-            raise
+            raise e
 
     async def update_task_completed(self, task_id: str, video_path: str,
                                     video_download_url: str):

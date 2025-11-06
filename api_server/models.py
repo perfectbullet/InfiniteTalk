@@ -67,7 +67,7 @@ class TaskInfo(BaseModel):
     error_message: Optional[str] = None
 
     # 时间戳
-    created_at: datetime
+    created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     # 运行时长
     uptime: Optional[float] = None  # 以秒为单位
