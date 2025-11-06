@@ -1,4 +1,5 @@
 import asyncio
+import mimetypes
 import shutil
 import uuid
 from contextlib import asynccontextmanager
@@ -13,9 +14,10 @@ from fastapi.responses import FileResponse
 from api_server.api_loger import logger
 from api_server.config import config
 from api_server.database import db_manager
-from api_server.video_task_worker import video_task_worker
 from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
 from api_server.utils import generate_unique_filename, validate_file_size
+from api_server.video_task_worker import video_task_worker
+
 
 # ==================== 生命周期管理 ====================
 @asynccontextmanager
@@ -374,26 +376,49 @@ async def delete_audio(audio_id: str):
         logger.error(f"Error deleting audio: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # 13. 下载文件接口（通用）
 @app.get("/api/download/{file_type}/{filename}")
 async def download_file(file_type: str, filename: str):
-    """下载文件"""
+    """下载文件（支持正确的 MIME 类型和文件名）"""
     try:
-        if file_type == "image":
-            file_path = config.UPLOAD_IMAGE_DIR / filename
-        elif file_type == "audio":
-            file_path = config.AUDIO_FILE_DIR / filename
-        elif file_type == "video":
-            file_path = config.OUTPUT_VIDEO_DIR / filename
-        else:
-            raise HTTPException(status_code=400, detail="Invalid file type")
-
+        # 1️⃣ 根据文件类型确定路径和默认 MIME 类型
+        file_config = {
+            "image": {
+                "dir": config.UPLOAD_IMAGE_DIR,
+                "default_media_type": "image/jpeg"
+            },
+            "audio": {
+                "dir": config.AUDIO_FILE_DIR,
+                "default_media_type": "audio/mpeg"
+            },
+            "video": {
+                "dir": config.OUTPUT_VIDEO_DIR,
+                "default_media_type": "video/mp4"
+            }
+        }
+        if file_type not in file_config:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type. Must be one of: {', '.join(file_config.keys())}"
+            )
+        # 2️⃣ 构建文件路径
+        file_path = file_config[file_type]["dir"] / filename
         if not file_path.exists():
-            raise HTTPException(status_code=404, detail="File not found")
-
-        return FileResponse(file_path)
-
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {filename}"
+            )
+        # 3️⃣ 自动检测 MIME 类型（优先使用文件扩展名）
+        media_type, _ = mimetypes.guess_type(str(file_path))
+        # 如果检测失败，使用默认值
+        if media_type is None:
+            media_type = file_config[file_type]["default_media_type"]
+        # 4️⃣ 返回文件响应（带正确的 MIME 类型和下载文件名）
+        return FileResponse(
+            path=file_path,
+            media_type=media_type,
+            filename=filename  # ✅ 设置下载时的文件名
+        )
     except HTTPException:
         raise
     except Exception as e:
