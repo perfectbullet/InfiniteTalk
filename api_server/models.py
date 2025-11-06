@@ -1,6 +1,5 @@
-from typing import Optional
-
-from pydantic import BaseModel
+from typing import Optional, List
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 class ImageInfo(BaseModel):
@@ -26,19 +25,49 @@ class AudioInfo(BaseModel):
     created_at: datetime
 
 
+class TaskProgress(BaseModel):
+    """任务进度信息"""
+    stage: str = "pending"  # pending, loading, preprocessing, generating, postprocessing, completed
+    progress: int = 0  # 0-100
+    message: str = ""
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class TaskLog(BaseModel):
+    """单条日志"""
+    timestamp: datetime = Field(default_factory=datetime.now)
+    level: str = "INFO"  # INFO, WARNING, ERROR
+    message: str
+
+
 class TaskInfo(BaseModel):
+    """任务信息"""
     id: str
-    status: str
+    status: str = "pending"  # pending, processing, running, completed, failed
     prompt: str
     image_path: str
     audio_path: str
-    video_path: Optional[str] = None
+    generate_video_file: Optional[str] = None
     video_download_url: Optional[str] = None
-    task_failed: Optional[str] = None
-    created_at: datetime
-    completed_at: Optional[datetime] = None
-    # 新增字段
+
+    # 进程信息
     pid: Optional[int] = None
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
-    task_execute_info: Optional[str] = None
+
+    # 进度信息（新增）
+    progress: Optional[TaskProgress] = None
+
+    # 日志信息（新增）
+    logs: List[TaskLog] = Field(default_factory=list)
+    log_path : Optional[str] = None
+    json_path: Optional[str] = None
+
+    # 错误信息
+    error_message: Optional[str] = None
+
+    # 时间戳
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    # 运行时长
+    uptime: Optional[float] = None  # 以秒为单位

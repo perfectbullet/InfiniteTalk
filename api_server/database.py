@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timedelta
 from typing import List
 
@@ -7,8 +6,9 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from api_server.config import config
 from api_server.models import TaskInfo
+from api_server.api_loger import logger
 from typing import Optional, Dict, Any
-
+from pathlib import Path
 
 class DatabaseManager:
     """数据库管理器"""
@@ -16,7 +16,7 @@ class DatabaseManager:
     def __init__(self):
         self.client: Optional[AsyncIOMotorClient] = None
         self.db: Optional[AsyncIOMotorDatabase] = None
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
 
     async def connect(self):
         """连接到 MongoDB"""
@@ -241,6 +241,7 @@ class DatabaseManager:
 
     async def create_task(self, task_id: str, prompt: str, image_path: str,
                           audio_path: str, **kwargs) -> str:
+
         """创建任务记录"""
         task_doc = {
             "_id": task_id,
@@ -256,6 +257,7 @@ class DatabaseManager:
             **kwargs  # 允许额外参数
         }
         await self.db[config.COLLECTION_TASKS].insert_one(task_doc)
+        logger.info(f"创建任务记录 task_doc: {task_doc}")
         return task_id
 
     async def get_task_by_id(self, task_id: str) -> Optional[TaskInfo]:
@@ -264,11 +266,11 @@ class DatabaseManager:
             task_doc = await self.db[config.COLLECTION_TASKS].find_one(
                 {"_id": task_id}
             )
+            logger.info(f"get_task_by_id task_doc: {task_doc}")
             if task_doc:
                 # 转换 _id 为 id
                 task_doc["id"] = task_doc["_id"]
                 del task_doc["_id"]
-
                 # 转换为 Pydantic 模型
                 return TaskInfo(**task_doc)
             return None
@@ -276,19 +278,87 @@ class DatabaseManager:
             self.logger.error(f"Error getting task {task_id}: {e}")
             return None
 
-    async def update_task_status(self, task_id: str, status: str, **kwargs):
+    @staticmethod
+    def sanitize_for_mongo(data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        清理数据以适配 MongoDB（转换 Path 对象为字符串）
+        Args:
+            data: 原始数据字典
+        Returns:
+            清理后的数据字典
+        """
+        cleaned = {}
+        for key, value in data.items():
+            if isinstance(value, Path):
+                cleaned[key] = str(value)
+            elif isinstance(value, list):
+                cleaned[key] = [str(v) if isinstance(v, Path) else v for v in value]
+            else:
+                cleaned[key] = value
+        return cleaned
+
+    async def update_task_status(
+            self,
+            task_id: str,
+            status: str,
+            pid: Optional[int] = None,
+            started_at: Optional[datetime] = None,
+            ended_at: Optional[datetime] = None,
+            error_message: Optional[str] = None,
+            video_path: Optional[str] = None,
+            video_download_url: Optional[str] = None,
+            log_path: Optional[str] = None,
+            command: Optional[List[str]] = None,
+            generate_video_file: Optional[str] = None,
+            uptime: Optional[float] = None
+    ):
         """更新任务状态"""
-        update_data = {"status": status}
-        update_data.update(kwargs)
+        try:
+            logger.info(f"🟢 [进入函数] update_task_status")
+            logger.info(f"🟢 [参数] task_id={task_id}, status={status}, pid={pid}")
 
-        await self.db[config.COLLECTION_TASKS].update_one(
-            {"_id": task_id},
-            {"$set": update_data}
-        )
+            # 构建更新数据
+            update_data = {
+                "status": status,
+                "log_path": log_path,
+                "command": command,
+                "generate_video_file": generate_video_file,
+                "uptime": uptime
+            }
 
-    async def update_task_processing(self, task_id: str):
-        """更新任务为处理中状态"""
-        await self.update_task_status(task_id, "processing")
+            if pid is not None:
+                update_data["pid"] = pid
+            if started_at is not None:
+                update_data["started_at"] = started_at
+            if ended_at is not None:
+                update_data["ended_at"] = ended_at
+            if error_message is not None:
+                update_data["error_message"] = error_message
+            if video_path is not None:
+                update_data["video_path"] = video_path
+            if video_download_url is not None:
+                update_data["video_download_url"] = video_download_url
+            # ✅ 清理数据（转换 Path 对象）
+            update_data = self.sanitize_for_mongo(update_data)
+            logger.info(f'🟢 [准备更新] 字段数量={update_data}')
+
+            result = await self.db[config.COLLECTION_TASKS].update_one(
+                {"_id": task_id},
+                {"$set": update_data}
+            )
+
+            logger.info(f'🟢 [更新结果] matched={result.matched_count}, modified={result.modified_count}')
+
+            if result.matched_count == 0:
+                logger.warning(f'⚠️ 未找到任务: {task_id}')
+            else:
+                logger.info(f'✅ 任务状态更新成功: {task_id} -> {status}')
+
+            return result
+
+        except Exception as e:
+            logger.error(f"🔴 [异常] 更新失败: {e}", exc_info=True)
+            raise
 
     async def update_task_completed(self, task_id: str, video_path: str,
                                     video_download_url: str):
@@ -298,7 +368,7 @@ class DatabaseManager:
             "completed",
             video_path=video_path,
             video_download_url=video_download_url,
-            completed_at=datetime.now()
+            ended_at=datetime.now()
         )
 
     async def update_task_failed(self, task_id: str, error_message: str):
@@ -307,7 +377,7 @@ class DatabaseManager:
             task_id,
             "failed",
             task_failed=error_message,
-            completed_at=datetime.now()
+            ended_at=datetime.now()
         )
 
     async def get_tasks(self, status: Optional[str] = None,
@@ -353,55 +423,80 @@ class DatabaseManager:
         self.logger.info(f"Cleaned up {result.deleted_count} old tasks")
         return result.deleted_count
 
-    # ==================== 数据库管理器更新方法 ====================
-    # 在 db_manager 中添加以下方法：
-
-    async def update_task_status(
+    async def update_task_progress(
             self,
             task_id: str,
-            status: str,
-            pid: Optional[int] = None,
-            started_at: Optional[datetime] = None,
-            ended_at: Optional[datetime] = None,
-            video_path: Optional[str] = None,
-            video_url: Optional[str] = None,
-            error_message: Optional[str] = None
+            stage: str,
+            progress: int,
+            message: str = ""
     ):
-        """
-        更新任务状态
+        """更新任务进度"""
+        try:
+            progress_data = {
+                "progress.stage": stage,
+                "progress.progress": progress,
+                "progress.message": message,
+                "progress.updated_at": datetime.now()
+            }
 
-        Args:
-            task_id: 任务 ID
-            status: 状态
-            pid: 进程 ID
-            started_at: 开始时间
-            ended_at: 结束时间
-            video_path: 视频路径
-            video_url: 视频下载链接
-            error_message: 错误信息
-        """
-        update_data = {
-            'status': status,
-            'updated_at': datetime.now()
-        }
+            result = await self.db[config.COLLECTION_TASKS].update_one(
+                {"_id": task_id},
+                {"$set": progress_data}
+            )
 
-        if pid is not None:
-            update_data['pid'] = pid
-        if started_at is not None:
-            update_data['started_at'] = started_at
-        if ended_at is not None:
-            update_data['ended_at'] = ended_at
-        if video_path is not None:
-            update_data['video_path'] = video_path
-        if video_url is not None:
-            update_data['video_url'] = video_url
-        if error_message is not None:
-            update_data['error_message'] = error_message
+            logger.info(f"✅ 更新进度: {task_id} - {stage} ({progress}%)")
+            return result
 
-        await self.db[config.COLLECTION_TASKS].update_one(
-            {'task_id': task_id},
-            {'$set': update_data}
-        )
+        except Exception as e:
+            logger.error(f"🔴 更新进度失败: {e}", exc_info=True)
+            raise
+
+    async def append_task_log(
+            self,
+            task_id: str,
+            message: str,
+            level: str = "INFO"
+    ):
+        """追加任务日志"""
+        try:
+            log_entry = {
+                "timestamp": datetime.now(),
+                "level": level,
+                "message": message
+            }
+
+            result = await self.db[config.COLLECTION_TASKS].update_one(
+                {"_id": task_id},
+                {"$push": {"logs": log_entry}}
+            )
+
+            logger.debug(f"📝 追加日志: {task_id} - {message}")
+            return result
+
+        except Exception as e:
+            logger.error(f"🔴 追加日志失败: {e}", exc_info=True)
+            raise
+
+    async def get_task_logs(
+            self,
+            task_id: str,
+            limit: int = 100
+    ) -> List[Dict]:
+        """获取任务日志（最新的N条）"""
+        try:
+            task_doc = await self.db[config.COLLECTION_TASKS].find_one(
+                {"_id": task_id},
+                {"logs": {"$slice": -limit}}  # 获取最后N条
+            )
+
+            if task_doc and "logs" in task_doc:
+                return task_doc["logs"]
+            return []
+
+        except Exception as e:
+            logger.error(f"🔴 获取日志失败: {e}")
+            return []
+
 
 # 创建全局数据库管理器实例
 db_manager = DatabaseManager()

@@ -1,19 +1,14 @@
-# api_logger.py
 """
 使用 loguru 配置日志系统
 """
-import os
 import sys
-from pathlib import Path
+
 from loguru import logger
 
 from api_server.config import config
 
 # 移除默认的 handler
 logger.remove()
-
-
-
 
 # 添加控制台输出
 logger.add(
