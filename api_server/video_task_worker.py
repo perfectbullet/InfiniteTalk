@@ -21,15 +21,67 @@ class VideoTaskWorker:
 
         while self.running:
             try:
-                task_id = await asyncio.wait_for(
-                    self.task_queue.get(),
-                    timeout=1.0
-                )
+                # 步骤1: 检查数据库中是否有正在运行的任务
+                running_tasks = await db_manager.get_tasks_by_status('running')
+
+                if running_tasks:
+                    # 有运行中的任务，检查并更新状态
+                    task_id = running_tasks[0]['id']
+                    logger.info(f"检测到运行中的任务: {task_id}")
+
+                    status = self.generator.get_status_by_pid(running_tasks[0]['pid'])
+                    logger.info(f"检测到运行中的任务: {status}")
+                    if status["status"] == "running":
+                        # 仍在运行，更新运行时长
+                        await db_manager.update_task_status(
+                            task_id,
+                            status=status["status"],
+                            uptime=status['uptime'],
+                        )
+                        logger.debug(f"任务运行中: {task_id}, 运行时长: {status['uptime']}s")
+
+                    elif status['status'] == 'success':
+                        # 任务成功完成
+                        ended_at = datetime.now()
+                        await db_manager.update_task_status(
+                            task_id,
+                            status='success',
+                            ended_at=ended_at,
+                            uptime=status['uptime'],
+                        )
+                        logger.info(f"任务完成: {task_id}")
+
+                    else:
+                        # 任务失败
+                        ended_at = datetime.now()
+                        await db_manager.update_task_status(
+                            task_id,
+                            status='failed',
+                            error_message='进程异常退出: status: {}'.format(status),
+                            ended_at=ended_at
+                        )
+                        logger.error(f"任务失败: {task_id}")
+
+                    # 等待一段时间后继续检查
+                    await asyncio.sleep(5.0)
+                    continue
+
+                # 步骤2: 没有运行中的任务，从队列获取新任务
+                if self.task_queue.empty():
+                    # 队列为空，短暂等待
+                    await asyncio.sleep(1.0)
+                    continue
+
+                # 从队列获取任务
+                task_id = await self.task_queue.get()
+                logger.info(f"从队列获取任务: {task_id}")
+
+                # 步骤3: 执行新任务
                 await self.process_task(task_id)
-            except asyncio.TimeoutError:
-                continue
+
             except Exception as e:
-                logger.error(f"任务处理器错误: {e}")
+                logger.error(f"任务处理器错误: {e}", exc_info=True)
+                await asyncio.sleep(1.0)
 
     async def stop(self):
         """停止任务处理器"""
@@ -131,12 +183,14 @@ class VideoTaskWorker:
                 await asyncio.sleep(5)  # 每 5 秒检查一次
                 # 检查进程状态（非阻塞）
                 status = self.generator.get_status(task_id)
+                video_path = Path(generate_video_file)
                 if status["status"] == "running":
                     # 运行中更新运行时长
                     await db_manager.update_task_status(
                         task_id,
                         status=status["status"],
                         uptime=status['uptime'],
+                        video_path=str(video_path)
                     )
                 elif status['status'] == 'success':
                     # 进程已完成，检查输出文件
@@ -158,6 +212,7 @@ class VideoTaskWorker:
                             task_id,
                             status='failed',
                             error_message='输出视频文件不存在',
+                            video_path=str(video_path),
                             ended_at=ended_at,
                         )
                         logger.error(f"任务失败（文件不存在）: {task_id}")
@@ -167,6 +222,7 @@ class VideoTaskWorker:
                     await db_manager.update_task_status(
                         task_id,
                         status='failed',
+                        video_path=str(video_path),
                         error_message='进程异常退出',
                         ended_at=ended_at
                     )

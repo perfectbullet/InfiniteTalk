@@ -462,3 +462,104 @@ class InfiniteTalkGenerator:
             }
 
         return active_tasks
+
+    def get_status_by_pid(self, pid: int) -> Dict[str, Any]:
+        """
+        通过 PID 检查任务运行状态
+
+        Args:
+            pid: 进程 PID
+
+        Returns:
+            Dict: {
+                'status': 'running' | 'success' | 'failed' | 'not_found' | 'error',
+                'pid': int or None,
+                'uptime': float or None,
+                'return_code': int or None,
+                'task_id': str or None,
+                'log_path': str or None,
+                'error_message': str or None
+            }
+        """
+        try:
+            # 先在已知任务中查找
+            for task_id, process_info in self.active_processes.items():
+                if process_info['process'].pid == pid:
+                    # 找到对应任务，使用已有方法获取完整状态
+                    return self.get_status(task_id)
+
+            # 如果在已知任务中没找到，尝试检查系统进程
+            import psutil
+
+            if psutil.pid_exists(pid):
+                try:
+                    process = psutil.Process(pid)
+
+                    # 检查进程是否是 Python 进程
+                    if 'python' in process.name().lower():
+                        return {
+                            'status': 'running',
+                            'pid': pid,
+                            'uptime': None,
+                            'return_code': None,
+                            'task_id': None,
+                            'log_path': None,
+                            'error_message': None
+                        }
+                    else:
+                        return {
+                            'status': 'not_found',
+                            'pid': pid,
+                            'uptime': None,
+                            'return_code': None,
+                            'task_id': None,
+                            'log_path': None,
+                            'error_message': f'PID {pid} 不是 Python 进程'
+                        }
+
+                except psutil.NoSuchProcess:
+                    return {
+                        'status': 'not_found',
+                        'pid': pid,
+                        'uptime': None,
+                        'return_code': None,
+                        'task_id': None,
+                        'log_path': None,
+                        'error_message': None
+                    }
+            else:
+                # 进程不存在，可能已完成或失败
+                return {
+                    'status': 'not_found',
+                    'pid': pid,
+                    'uptime': None,
+                    'return_code': None,
+                    'task_id': None,
+                    'log_path': None,
+                    'error_message': None
+                }
+
+        except ImportError:
+            # 如果没有 psutil，只能检查已知任务
+            logger.warning("未安装 psutil，只能检查已知任务")
+            return {
+                'status': 'not_found',
+                'pid': pid,
+                'uptime': None,
+                'return_code': None,
+                'task_id': None,
+                'log_path': None,
+                'error_message': 'psutil not installed'
+            }
+
+        except Exception as e:
+            logger.error(f"通过 PID 检查状态失败: {e}")
+            return {
+                'status': 'error',
+                'pid': pid,
+                'uptime': None,
+                'return_code': None,
+                'task_id': None,
+                'log_path': None,
+                'error_message': str(e)
+            }
