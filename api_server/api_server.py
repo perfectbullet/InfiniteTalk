@@ -441,9 +441,18 @@ async def download_file(file_type: str, filename: str):
 # 14. 创建视频生成任务
 @app.post("/api/tasks/create", response_model=TaskInfo)
 async def create_video_task(
-        prompt: str = Form(...),
-        image_path: str = Form(...),
-        audio_path: str = Form(...)
+        prompt: str = Form(
+            default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下，动态的中景镜头捕捉到他元气满满的动作。",
+            description="视频生成提示词"
+        ),
+        image_path: str = Form(
+            default="/workspace/InfiniteTalk/upload_image/img_20251105_123750_5cd53558.jpeg",
+            description="参考图片路径"
+        ),
+        audio_path: str = Form(
+            default="/workspace/InfiniteTalk/audio_file/audio_20251105_092704_cf433602.wav",
+            description="音频文件路径"
+        )
 ):
     """创建视频生成任务（立即返回任务ID，后台异步生成）"""
     try:
@@ -650,9 +659,9 @@ def main():
     import uvicorn
 
     uvicorn.run(
-        app,
+        "api_server.api_server:app",  # 使用导入字符串代替应用实例
         host=config.API_HOST,
         port=config.API_PORT,
-        workers=config.API_WORKERS,
-        log_level=config.LOG_LEVEL.lower()
+        log_level=config.LOG_LEVEL.lower(),
+        reload=True  # 启用热重载模式
     )
