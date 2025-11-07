@@ -307,7 +307,6 @@ class DatabaseManager:
     ):
         """更新任务状态"""
         try:
-            logger.info(f"🟢 [进入函数] update_task_status")
             logger.info(f"🟢 [参数] task_id={task_id}, status={status}, pid={pid}")
             # 构建更新数据
             update_data = {
@@ -338,12 +337,10 @@ class DatabaseManager:
                 update_data["generate_video_file"] = generate_video_file
             # 清理数据（转换 Path 对象）
             update_data = self.sanitize_for_mongo(update_data)
-            logger.info(f'🟢 [准备更新] 字段数量={update_data}')
             result = await self.db[config.COLLECTION_TASKS].update_one(
                 {"_id": task_id},
                 {"$set": update_data}
             )
-            logger.info(f'🟢 [更新结果] matched={result.matched_count}, modified={result.modified_count}')
             if result.matched_count == 0:
                 logger.warning(f'⚠️ 未找到任务: {task_id}')
             else:
@@ -389,6 +386,21 @@ class DatabaseManager:
             del task["_id"]
 
         return tasks
+
+    async def get_tasks_by_status(self, status: str) -> List[Dict[str, Any]]:
+        """根据状态查询任务列表"""
+        try:
+            cursor = self.db[config.COLLECTION_TASKS].find({"status": status})
+            tasks = await cursor.to_list(length=None)
+
+            for task in tasks:
+                task["id"] = task["_id"]
+                del task["_id"]
+
+            return tasks
+        except Exception as e:
+            self.logger.error(f"Error getting tasks by status {status}: {e}")
+            return []
 
     async def delete_task(self, task_id: str) -> bool:
         """删除任务记录"""
