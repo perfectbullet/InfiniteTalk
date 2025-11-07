@@ -15,6 +15,7 @@ from api_server.api_loger import logger
 from api_server.config import config
 from api_server.database import db_manager
 from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
+from api_server.routers import task_logs
 from api_server.utils import generate_unique_filename, validate_file_size
 from api_server.video_task_worker import video_task_worker
 
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
     await video_task_worker.stop()
     logger.info("Shutting down video_task_worker complete")
 
+
 # ==================== 创建 FastAPI 应用 ====================
 app = FastAPI(
     title=config.API_TITLE,
@@ -70,6 +72,16 @@ app = FastAPI(
     version=config.API_VERSION,
     debug=config.DEBUG,
     lifespan=lifespan
+)
+
+app.include_router(
+    task_logs.router,
+    prefix="/api",  # 如果 router 已经有 prefix，这里可以不加
+    tags=["Task Logs"],
+    responses={
+        404: {"description": "资源不存在"},
+        500: {"description": "服务器错误"}
+    }
 )
 
 # 配置 CORS
@@ -81,8 +93,6 @@ if config.ENABLE_CORS:
         allow_methods=config.CORS_METHODS,
         allow_headers=config.CORS_HEADERS,
     )
-
-
 
 
 # ==================== API 接口 ====================
@@ -375,6 +385,7 @@ async def delete_audio(audio_id: str):
     except Exception as e:
         logger.error(f"Error deleting audio: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # 13. 下载文件接口（通用）
 @app.get("/api/download/{file_type}/{filename}")
