@@ -25,8 +25,7 @@ class InfiniteTalkGenerator:
     def generate(
             self,
             task_info: Dict[str, Any],
-            task_id: str,
-            **kwargs
+            task_id: str
     ) -> Dict[str, Any]:
         """
         执行 InfiniteTalk 视频生成（非阻塞，最佳实践）
@@ -34,17 +33,6 @@ class InfiniteTalkGenerator:
         Args:
             task_info: 任务信息字典，包含 prompt, image_path, audio_path
             task_id: 任务 ID
-            **kwargs: 额外参数
-                - ckpt_dir: 模型权重目录
-                - wav2vec_dir: wav2vec 权重目录
-                - infinitetalk_dir: InfiniteTalk 权重目录
-                - size: 尺寸 (默认: infinitetalk-480)
-                - sample_steps: 采样步数 (默认: 40)
-                - mode: 模式 (默认: streaming)
-                - quant: 量化类型 (默认: fp8)
-                - quant_dir: 量化模型目录
-                - motion_frame: 运动帧数 (默认: 9)
-                - num_persistent_param_in_dit: 持久化参数数量 (默认: 0)
 
         Returns:
             Dict: 包含 success, pid, log_path, json_path 等信息
@@ -72,7 +60,7 @@ class InfiniteTalkGenerator:
             log_path = log_dir / f"task_{task_id}.log"
             generate_video_file = config.OUTPUT_VIDEO_DIR / f"infinitetalk_res_{task_id}.mp4"
             # 3️⃣ 构建命令（列表形式，不使用 shell）
-            cmd = self._build_command(json_path, generate_video_file, **kwargs)
+            cmd = self._build_command(json_path, generate_video_file)
 
             logger.info(f"🚀 启动视频生成任务: {task_id}")
             logger.info(f"📝 命令: {' '.join(str(c) for c in cmd)}")
@@ -178,14 +166,13 @@ class InfiniteTalkGenerator:
         logger.info(f"📝 创建任务配置文件: {json_path}")
         return json_path
 
-    def _build_command(self, json_path: Path, save_file, **kwargs) -> list:
+    def _build_command(self, json_path: Path, save_file) -> list:
         """
-        构建命令行参数列表
+        构建命令行参数列表（所有参数固定）
 
         Args:
             json_path: JSON 配置文件路径
-            task_id: 任务 ID
-            **kwargs: 可选参数
+            save_file: 输出视频文件路径
 
         Returns:
             list: 命令行参数列表
@@ -194,29 +181,35 @@ class InfiniteTalkGenerator:
             "python",
             str(self.script_path),
             "--ckpt_dir",
-            str(kwargs.get("ckpt_dir", "weights/Wan2.1-I2V-14B-480P")),
+            "weights/Wan2.1-I2V-14B-480P",
             "--wav2vec_dir",
-            str(kwargs.get("wav2vec_dir", "weights/chinese-wav2vec2-base")),
+            "weights/chinese-wav2vec2-base",
             "--infinitetalk_dir",
-            str(kwargs.get("infinitetalk_dir", "weights/InfiniteTalk/single/infinitetalk.safetensors")),
+            "weights/InfiniteTalk/single/infinitetalk.safetensors",
+            "--lora_dir",
+            "Wan14BT2VFusioniX/FusionX_LoRa/Wan2.1_I2V_14B_FusionX_LoRA.safetensors",
             "--input_json",
             str(json_path),
+            "--lora_scale",
+            "0.8",
             "--size",
-            kwargs.get("size", "infinitetalk-480"),
+            "infinitetalk-480",
+            "--sample_text_guide_scale",
+            "1.0",
+            "--sample_audio_guide_scale",
+            "2.0",
             "--sample_steps",
-            str(kwargs.get("sample_steps", 40)),
+            "8",
             "--mode",
-            kwargs.get("mode", "streaming"),
-            "--quant",
-            kwargs.get("quant", "fp8"),
-            "--quant_dir",
-            str(kwargs.get("quant_dir", "weights/InfiniteTalk/quant_models/infinitetalk_single_fp8.safetensors")),
+            "streaming",
             "--motion_frame",
-            str(kwargs.get("motion_frame", 9)),
+            "9",
+            "--sample_shift",
+            "2",
             "--num_persistent_param_in_dit",
-            str(kwargs.get("num_persistent_param_in_dit", 0)),
+            "0",
             "--save_file",
-            save_file,
+            str(save_file),
         ]
 
         return cmd

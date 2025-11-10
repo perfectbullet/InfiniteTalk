@@ -439,7 +439,7 @@ async def download_file(file_type: str, filename: str):
 
 # ==================== 视频生成相关接口 ====================
 # 14. 创建视频生成任务
-@app.post("/api/tasks/create", response_model=TaskInfo)
+@app.post("/api/tasks/create", tags=["Tasks"], response_model=TaskInfo)
 async def create_video_task(
         prompt: str = Form(
             default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下，动态的中景镜头捕捉到他元气满满的动作。",
@@ -484,7 +484,7 @@ async def create_video_task(
 
 
 # 15. 查询任务状态
-@app.get("/api/tasks/{task_id}", response_model=TaskInfo)
+@app.get("/api/tasks/{task_id}", tags=["Tasks"], response_model=TaskInfo)
 async def get_task_status(task_id: str):
     """查询任务状态"""
     try:
@@ -500,7 +500,7 @@ async def get_task_status(task_id: str):
 
 
 # 16. 获取任务列表
-@app.get("/api/tasks", response_model=List[TaskInfo])
+@app.get("/api/tasks", tags=["Tasks"], response_model=List[TaskInfo])
 async def get_tasks(
         status: Optional[str] = None,
         limit: int = 20
