@@ -319,7 +319,54 @@ python generate_infinitetalk.py \
     --save_file infinitetalk_res_lora
 ```
 
+正确使用FusioniX LoRA的命令如下：
+```
+python generate_infinitetalk.py \
+    --ckpt_dir weights/Wan2.1-I2V-14B-480P \
+    --wav2vec_dir 'weights/chinese-wav2vec2-base' \
+    --infinitetalk_dir weights/InfiniteTalk/single/infinitetalk.safetensors \
+    --lora_dir Wan14BT2VFusioniX/FusionX_LoRa/Wan2.1_I2V_14B_FusionX_LoRA.safetensors \
+    --input_json examples/single_example_zmh.json \
+    --lora_scale 1.0 \
+    --size infinitetalk-480 \
+    --sample_text_guide_scale 1.0 \
+    --sample_audio_guide_scale 2.0 \
+    --sample_steps 8 \
+    --mode streaming \
+    --motion_frame 9 \
+    --sample_shift 2 \
+    --num_persistent_param_in_dit 0 \
+    --save_file infinitetalk_res_lora.mp4
+```
 
+以下是该命令各参数的含义：
+
+**基础路径参数：**
+- `--ckpt_dir weights/Wan2.1-I2V-14B-480P` - 基础模型权重目录
+- `--wav2vec_dir 'weights/chinese-wav2vec2-base'` - 音频编码器模型目录
+- `--infinitetalk_dir weights/InfiniteTalk/single/infinitetalk.safetensors` - InfiniteTalk 音频条件权重文件
+- `--lora_dir Wan14BT2VFusioniX/FusionX_LoRa/Wan2.1_I2V_14B_FusionX_LoRA.safetensors` - FusionX LoRA 权重文件路径
+
+**输入输出参数：**
+- `--input_json examples/single_example_image.json` - 输入配置文件，包含图像和音频路径
+- `--save_file infinitetalk_res_lora` - 输出视频保存文件名
+
+**LoRA 配置：**
+- `--lora_scale 1.0` - LoRA 权重缩放系数，控制 LoRA 效果强度
+
+**视频生成参数：**
+- `--size infinitetalk-480` - 输出视频分辨率（480P）
+- `--sample_steps 40` - 扩散模型采样步数（注：标题说 8 步，但实际使用 40 步）
+- `--mode streaming` - 流式生成模式，支持长视频生成
+- `--motion_frame 9` - 运动帧数，控制动作幅度
+
+**引导参数：**
+- `--sample_text_guide_scale 1.0` - 文本条件引导强度（使用 LoRA 时建议值为 1.0）
+- `--sample_audio_guide_scale 2.0` - 音频条件引导强度（使用 LoRA 时建议值为 2.0）
+- `--sample_shift 2` - 采样偏移参数
+
+**内存优化：**
+- `--num_persistent_param_in_dit 0` - DiT 模型持久化参数数量，设为 0 可降低显存占用
 
 #### 3. Run with the quantization model (Only support run with single gpu)
 

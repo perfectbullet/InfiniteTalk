@@ -1,0 +1,10 @@
+infinite_talk_fastapi/
+│
+├── app/
+│   ├── main.py
+│   ├── generate_infinitetalk.py  # Copy the existing script here
+│   ├── requirements.txt
+│   └── logs/
+│       └── execution.log
+│
+└── Dockerfile  # Optional, if you want to containerize the application
