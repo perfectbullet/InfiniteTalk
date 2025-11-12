@@ -143,3 +143,4 @@ ai_agents/*.log
 ai_agents/*.pcm
 /ai_agents/agents/examples/voice-assistant-live2d/.env
 /前端用的模型/
+/show_demo2/videos/
