@@ -131,7 +131,7 @@ body {
     position: absolute;
     bottom: 20px;
     right: 20px;
-    width: 320px;
+    width: 260px;
     background: rgba(0, 0, 0, 0.95);
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -150,59 +150,25 @@ body {
     display: none;
 }
 
-.pip-video-container.minimized .video-header-mini {
-    padding: 10px;
-    font-size: 12px;
-}
-
 .pip-video-container.minimized .drag-handle {
     display: none;
 }
 
 /* 小尺寸 */
 .pip-video-container.size-small {
-    width: 280px;
+    width: 220px;
 }
 
 /* 中等尺寸 */
 .pip-video-container.size-medium {
-    width: 360px;
+    width: 280px;
 }
 
 /* 大尺寸 */
 .pip-video-container.size-large {
-    width: 480px;
+    width: 360px;
 }
 
-.video-header-mini {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    padding: 8px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: move;
-    user-select: none;
-}
-
-.pip-close-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-    transition: all 0.3s;
-}
-
-.pip-close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
 
 #lecture-video {
     display: block;

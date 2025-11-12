@@ -49,7 +49,6 @@ const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const lectureVideo = document.getElementById('lecture-video');
 const pipVideo = document.getElementById('pip-video');
-const videoTitleMini = document.getElementById('video-title-mini');
 const autoPlayCheckbox = document.getElementById('auto-play');
 const speedControl = document.getElementById('speed-control');
 const progressFill = document.getElementById('progress-fill');
@@ -57,7 +56,6 @@ const progressText = document.getElementById('progress-text');
 const outlineList = document.getElementById('outline-list');
 const notesTextarea = document.getElementById('notes');
 const saveNotesBtn = document.getElementById('save-notes');
-const pipToggleBtn = document.getElementById('pip-toggle');
 const dragHandle = document.getElementById('drag-handle');
 const sizeButtons = document.querySelectorAll('.size-btn');
 
@@ -83,7 +81,6 @@ function loadSlide(index) {
     
     // 更新视频
     lectureVideo.src = slide.videoUrl;
-    videoTitleMini.textContent = `📹 ${slide.title}`;
 
     // 自动播放视频
     if (autoPlayCheckbox.checked) {
@@ -175,10 +172,12 @@ function loadVideoSize() {
 
 // 画中画拖动功能
 function setupDragging() {
-    const header = pipVideo.querySelector('.video-header-mini');
     let offsetX, offsetY;
     
-    header.addEventListener('mousedown', (e) => {
+    pipVideo.addEventListener('mousedown', (e) => {
+        // 如果点击的是视频控件或拖动手柄，不触发拖动
+        if (e.target === lectureVideo || e.target.closest('.drag-handle')) return;
+        
         if (pipVideo.classList.contains('minimized')) return;
         isDragging = true;
         offsetX = e.clientX - pipVideo.offsetLeft;
@@ -213,12 +212,6 @@ function setupDragging() {
     });
 }
 
-// 最小化/还原画中画
-function togglePipMinimize() {
-    pipVideo.classList.toggle('minimized');
-    pipToggleBtn.textContent = pipVideo.classList.contains('minimized') ? '+' : '−';
-}
-
 // 设置事件监听
 function setupEventListeners() {
     prevBtn.addEventListener('click', () => loadSlide(currentSlideIndex - 1));
@@ -229,9 +222,6 @@ function setupEventListeners() {
     });
     
     saveNotesBtn.addEventListener('click', saveNotes);
-    
-    // 画中画切换
-    pipToggleBtn.addEventListener('click', togglePipMinimize);
     
     // 视频大小按钮
     sizeButtons.forEach(btn => {
