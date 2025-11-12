@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个性化首饰设计及制作</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部导航 -->
+        <header class="header">
+            <h1>📚个性化首饰设计及制作</h1>
+            <div class="progress-info">
+                <span>进度：<span id="progress-text">0/0</span></span>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- PPT 展示区（占据主要空间） -->
+            <section class="slide-container">
+                <div class="slide-wrapper">
+                    <div id="current-slide" class="slide">
+                        <!-- 幻灯片内容将动态加载 -->
+                    </div>
+
+                    <!-- 画中画视频 - 右下角 -->
+                    <div class="pip-video-container" id="pip-video">
+                        <div class="video-header-mini">
+                            <span id="video-title-mini">📹 讲师解说</span>
+                            <button class="pip-close-btn" id="pip-toggle">−</button>
+                        </div>
+                        <video id="lecture-video" controls>
+                            <source src="" type="video/mp4">
+                            您的浏览器不支持视频播放。
+                        </video>
+                        
+                        <!-- 拖动手柄 -->
+                        <div class="drag-handle" id="drag-handle">
+                            <span>⋮⋮</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PPT 控制按钮 -->
+                <div class="slide-controls">
+                    <button id="prev-btn" class="control-btn">
+                        ← 上一页
+                    </button>
+                    <span class="slide-counter" id="slide-counter">1 / 5</span>
+                    <button id="next-btn" class="control-btn">
+                        下一页 →
+                    </button>
+                </div>
+
+                <!-- 视频控制面板 -->
+                <div class="video-control-panel">
+                    <div class="control-group">
+                        <label>📐 视频大小：</label>
+                        <div class="size-buttons">
+                            <button class="size-btn" data-size="small">小</button>
+                            <button class="size-btn active" data-size="medium">中</button>
+                            <button class="size-btn" data-size="large">大</button>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="auto-play" checked>
+                            切换时自动播放
+                        </label>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>播放速度：</label>
+                        <select id="speed-control">
+                            <option value="0.5">0.5x</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 右侧边栏：课程大纲 -->
+        <aside class="sidebar">
+            <h3>📋 课程大纲</h3>
+            <ul id="outline-list" class="outline-list">
+                <!-- 将由 JavaScript 动态生成 -->
+            </ul>
+            
+            <div class="notes-section">
+                <h4>📝 我的笔记</h4>
+                <textarea id="notes" placeholder="在这里记录学习笔记..."></textarea>
+                <button id="save-notes" class="save-btn">保存笔记</button>
+            </div>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

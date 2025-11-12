@@ -1,0 +1,474 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    grid-template-rows: auto 1fr;
+    gap: 20px;
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+/* 头部样式 */
+.header {
+    grid-column: 1 / -1;
+    background: white;
+    padding: 20px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    font-size: 24px;
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.progress-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 10px;
+    background: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* 主内容区 */
+.main-content {
+    display: flex;
+    flex-direction: column;
+}
+
+/* PPT 展示区（占据主要空间） */
+.slide-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.slide-wrapper {
+    background: #f5f5f5;
+    border-radius: 8px;
+    overflow: visible;
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 比例 */
+}
+
+.slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    font-size: 18px;
+    text-align: center;
+    background: white;
+    border-radius: 8px;
+}
+
+.slide h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    font-size: 32px;
+}
+
+.slide p {
+    line-height: 1.8;
+    color: #555;
+    max-width: 90%;
+    margin: 10px auto;
+}
+
+.slide ul {
+    text-align: left;
+    max-width: 80%;
+    margin: 20px auto;
+}
+
+.slide li {
+    margin: 12px 0;
+    padding-left: 10px;
+    font-size: 16px;
+}
+
+/* 画中画视频容器 - 右下角 */
+.pip-video-container {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    background: rgba(0, 0, 0, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.pip-video-container.minimized {
+    width: 80px;
+    height: 50px;
+}
+
+.pip-video-container.minimized video {
+    display: none;
+}
+
+.pip-video-container.minimized .video-header-mini {
+    padding: 10px;
+    font-size: 12px;
+}
+
+.pip-video-container.minimized .drag-handle {
+    display: none;
+}
+
+/* 小尺寸 */
+.pip-video-container.size-small {
+    width: 280px;
+}
+
+/* 中等尺寸 */
+.pip-video-container.size-medium {
+    width: 360px;
+}
+
+/* 大尺寸 */
+.pip-video-container.size-large {
+    width: 480px;
+}
+
+.video-header-mini {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: move;
+    user-select: none;
+}
+
+.pip-close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    transition: all 0.3s;
+}
+
+.pip-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+#lecture-video {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #000;
+}
+
+/* 拖动手柄 */
+.drag-handle {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 30px;
+    height: 30px;
+    background: rgba(102, 126, 234, 0.8);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: nwse-resize;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    user-select: none;
+}
+
+.drag-handle:hover {
+    background: rgba(102, 126, 234, 1);
+}
+
+/* PPT 控制按钮 */
+.slide-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.control-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.control-btn:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+}
+
+.control-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.slide-counter {
+    font-weight: bold;
+    color: #667eea;
+    font-size: 18px;
+}
+
+/* 视频控制面板 */
+.video-control-panel {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+}
+
+.size-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.size-btn {
+    padding: 6px 16px;
+    background: white;
+    border: 2px solid #667eea;
+    color: #667eea;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.size-btn:hover {
+    background: #e8ecff;
+}
+
+.size-btn.active {
+    background: #667eea;
+    color: white;
+}
+
+#speed-control {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+/* 侧边栏 */
+.sidebar {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+}
+
+.sidebar h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.outline-list {
+    list-style: none;
+    margin-bottom: 30px;
+}
+
+.outline-list li {
+    padding: 12px;
+    margin: 8px 0;
+    background: #f8f9fa;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-left: 3px solid transparent;
+    font-size: 14px;
+}
+
+.outline-list li:hover {
+    background: #e9ecef;
+    border-left-color: #667eea;
+}
+
+.outline-list li.active {
+    background: #667eea;
+    color: white;
+    border-left-color: #764ba2;
+}
+
+.outline-list li.completed::before {
+    content: '✓ ';
+    color: #28a745;
+    font-weight: bold;
+}
+
+.outline-list li.active.completed::before {
+    color: #fff;
+}
+
+/* 笔记区域 */
+.notes-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #e9ecef;
+}
+
+.notes-section h4 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+#notes {
+    width: 100%;
+    min-height: 120px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.save-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.save-btn:hover {
+    background: #218838;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
+    
+    .sidebar {
+        max-height: none;
+    }
+    
+    .pip-video-container {
+        width: 280px;
+    }
+    
+    .pip-video-container.size-large {
+        width: 360px;
+    }
+}
+
+@media (max-width: 768px) {
+    .slide {
+        padding: 20px;
+        font-size: 14px;
+    }
+    
+    .slide h2 {
+        font-size: 24px;
+    }
+    
+    .control-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+    
+    .pip-video-container {
+        width: 200px;
+        bottom: 10px;
+        right: 10px;
+    }
+    
+    .video-control-panel {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

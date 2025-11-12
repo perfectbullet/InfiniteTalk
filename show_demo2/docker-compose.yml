@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  web:
+    image: nginx:alpine
+    container_name: ppt-video-demo
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - ppt-network
+
+networks:
+  ppt-network:
+    driver: bridge
