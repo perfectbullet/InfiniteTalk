@@ -156,17 +156,17 @@ body {
 
 /* 小尺寸 */
 .pip-video-container.size-small {
-    width: 220px;
+    width: 200px;
 }
 
 /* 中等尺寸 */
 .pip-video-container.size-medium {
-    width: 280px;
+    width: 260px;
 }
 
 /* 大尺寸 */
 .pip-video-container.size-large {
-    width: 360px;
+    width: 320px;
 }
 
 
