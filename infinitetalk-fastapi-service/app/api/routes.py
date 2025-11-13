@@ -75,3 +75,43 @@ async def download_file(filename: str):
     except Exception as e:
         logger.error(f"Error downloading file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/course/{ppt_name}")
+async def get_course_data(ppt_name: str) -> dict:
+    """获取课程数据（目前为硬编码数据）"""
+    # 硬编码的课程数据
+    course_data = [
+        {
+            "id": 1,
+            "title": "第一讲:M09个性化首饰设计及制作",
+            "slideContent": '<img src="slides/slide_001.png" style="max-width: 100%; height: auto;" alt="课程介绍">',
+            "videoUrl": "http://192.168.8.231:50008/download/video/infinitetalk_res_480p_optimized_slide1v6.mp4",
+            "duration": "0:10",
+            "narration": "欢迎同学们选修制造工程体验课程M09：个性化首饰设计及制作。在这门课程中，你将学习首饰设计的基本原理，掌握3D建模和加工制作技能，亲手打造属于自己的独特作品。"
+        },
+        {
+            "id": 2,
+            "title": "第二讲:中心简介-历史沿革",
+            "slideContent": '<img src="slides/slide_002.png" style="max-width: 100%; height: auto;" alt="历史沿革">',
+            "videoUrl": "http://192.168.8.231:50008/download/video/infinitetalk_res_480p_optimized_slide3v2-rmb.webm",
+            "duration": "0:10",
+            "narration": "工训训练中心有着百年传承。从1921年的手工教学到金工实习，再到工训文化和工创理念，中心不断发展演进。如今，我们已经完成了从机械化、电气化到信息化、智能化的转型升级，始终走在工程教育创新的前沿。"
+        },
+        {
+            "id": 3,
+            "title": "第三讲:中心简介-功能定位",
+            "slideContent": '<img src="slides/slide_003.png" style="max-width: 100%; height: auto;" alt="功能定位">',
+            "videoUrl": "http://192.168.8.231:50008/download/video/infinitetalk_res_480p_optimized_slide3v4.mp4",
+            "duration": "0:10",
+            "narration": "清华大学基础工业训练中心，简称工训训练中心，是国际领先的工程实践与创新教育中心。中心传承工匠精神，弘扬创客文化，致力于培养学生的工程能力、劳动素质和创新创业能力，为同学们的梦想实现提供全方位支持。"
+        }
+    ]
+
+    logger.info(f"Fetching course data for PPT: {ppt_name}")
+
+    # 返回课程数据（后续可根据 ppt_name 从数据库查询）
+    return {
+        "pptName": ppt_name,
+        "courses": course_data
+    }
