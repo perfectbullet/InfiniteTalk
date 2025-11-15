@@ -123,6 +123,7 @@ class BlackBackgroundRemover:
         print(f"边缘混合: {self.blend}")
         print(f"编码器: {codec}")
         print(f"像素格式: {pixel_format}")
+        print(f"filter_chain: {filter_chain}")
         print()
 
         try:
