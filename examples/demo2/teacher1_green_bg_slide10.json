@@ -1,0 +1,7 @@
+{
+    "prompt": "一位年轻且充满活力的男同学正在向老师提问。他穿着白色校服，棕色短发。他用手势强调重点内容。他的脸上洋溢着热情和自信。动态的中景镜头捕捉到他提问的瞬间。",
+    "cond_video": "examples/teacher/half_body01_green_v2.jpg",
+    "cond_audio": {
+        "person1": "output_audio/slide10_teacher1_hutao_tts.wav"
+    }
+}

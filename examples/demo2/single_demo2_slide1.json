@@ -1,0 +1,7 @@
+{
+    "prompt": "一位年轻而充满活力的女教师正在讲解PPT演示文稿。她穿着天蓝色的衣服，长长的棕发自然垂落。她用富有表现力的手势强调重点内容。她的脸上洋溢着热情和温暖。自然光线充满整个空间，营造出充满灵感和创造力的学习环境。动态的中景镜头捕捉到她充满趣味的教学瞬间。",
+    "cond_video": "examples/teacher/half_body01_green_v2.jpg",
+    "cond_audio": {
+        "person1": "output_audio/slide1_tts.wav"
+    }
+}
