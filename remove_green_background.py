@@ -6,7 +6,7 @@
 
 用法:
     python remove_green_background.py --input input.mp4 --output output.mov
-    python remove_green_background.py --input input.mp4 --output output.webm --similarity 0.4 --blend 0.1
+    python remove_green_background.py --input input.mp4 --output output.webm --similarity 0.4 --blend 0.1 --despill-mix 0.9
 """
 
 import argparse
@@ -18,28 +18,34 @@ from typing import Tuple
 
 class BlackBackgroundRemover:
     """绿色背景去除工具"""
-    
+
     def __init__(
-        self, 
-        input_path: str, 
-        output_path: str,
-        similarity: float = 0.35,
-        blend: float = 0.1
+            self,
+            input_path: str,
+            output_path: str,
+            similarity: float = 0.35,
+            blend: float = 0.1,
+            despill_mix: float = 0.9,
+            despill_expand: float = 0.05
     ):
         """
         初始化绿色背景去除工具
-        
+
         Args:
             input_path: 输入视频路径
-            output_path: 输出视频路径（建议使用 .mov 或 .webm）
-            similarity: 绿色相似度阈值 (0.0-1.0)，值越大去除范围越广
-            blend: 边缘混合程度 (0.0-1.0)，用于平滑边缘
+            output_path: 输出视频路径(建议使用 .mov 或 .webm)
+            similarity: 绿色相似度阈值 (0.0-1.0),值越大去除范围越广
+            blend: 边缘混合程度 (0.0-1.0),用于平滑边缘
+            despill_mix: 去除绿色色溢强度 (0.0-1.0),值越大去除越强
+            despill_expand: 色溢处理扩展范围 (0.0-1.0),值越大处理区域越广
         """
         self.input_path = Path(input_path)
         self.output_path = Path(output_path)
         self.similarity = similarity
         self.blend = blend
-    
+        self.despill_mix = despill_mix
+        self.despill_expand = despill_expand
+
     def check_ffmpeg(self) -> bool:
         """检查 FFmpeg 是否安装"""
         try:
@@ -52,30 +58,42 @@ class BlackBackgroundRemover:
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
-    
+
     def get_codec_settings(self) -> Tuple[str, str, list]:
         """
         根据输出格式获取编码器设置
-        
+
         Returns:
             (codec, pixel_format, extra_args)
         """
         ext = self.output_path.suffix.lower()
-        
+
         if ext == '.mov':
-            # ProRes 4444 支持透明通道，质量最好
+            # ProRes 4444 支持透明通道,质量最好
             return 'prores_ks', 'yuva444p10le', ['-c:a', 'pcm_s16le']
         elif ext == '.webm':
-            # VP9 支持透明通道，文件较小
+            # VP9 支持透明通道,文件较小
             return 'libvpx-vp9', 'yuva420p', [
                 '-c:a', 'libopus',
                 '-auto-alt-ref', '0',
-                '-b:v', '2M'  # 设置码率
+                '-b:v', '2M'
             ]
         else:
             print(f"警告: 输出格式 {ext} 可能不支持透明通道")
             print("建议使用 .mov 或 .webm 格式")
             return 'png', 'rgba', []
+
+    def build_filter_chain(self) -> str:
+        """
+        构建滤镜链
+
+        Returns:
+            完整的 FFmpeg 滤镜字符串
+        """
+        return (
+            f"colorkey=0x00FF00:{self.similarity}:{self.blend},"
+            f"despill=type=green:mix={self.despill_mix}:expand={self.despill_expand}"
+        )
 
     def process(self) -> bool:
         """
@@ -98,11 +116,7 @@ class BlackBackgroundRemover:
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         codec, pixel_format, extra_args = self.get_codec_settings()
 
-        # 使用 colorkey + despill 组合滤镜
-        filter_chain = (
-            f"colorkey=0x00FF00:{self.similarity}:{self.blend},"
-            "despill=type=green:mix=0.9:expand=0.05"
-        )
+        filter_chain = self.build_filter_chain()
 
         cmd = [
             'ffmpeg',
@@ -121,9 +135,11 @@ class BlackBackgroundRemover:
         print(f"滤镜链: colorkey + despill (去除绿色色溢)")
         print(f"相似度阈值: {self.similarity}")
         print(f"边缘混合: {self.blend}")
+        print(f"色溢去除强度: {self.despill_mix}")
+        print(f"色溢扩展范围: {self.despill_expand}")
         print(f"编码器: {codec}")
         print(f"像素格式: {pixel_format}")
-        print(f"filter_chain: {filter_chain}")
+        print(f"完整滤镜: {filter_chain}")
         print()
 
         try:
@@ -141,37 +157,40 @@ def validate_threshold(value: float, name: str) -> None:
     """验证阈值参数范围"""
     if not (0.0 <= value <= 1.0):
         raise argparse.ArgumentTypeError(
-            f"{name} 参数必须在 0.0 到 1.0 之间，当前值: {value}"
+            f"{name} 参数必须在 0.0 到 1.0 之间,当前值: {value}"
         )
 
 
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description='去除视频绿色背景，输出透明背景视频',
+        description='去除视频绿色背景,输出透明背景视频',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # 基本用法，输出 MOV 格式（推荐，质量最好）
+  # 基本用法,输出 MOV 格式(推荐,质量最好)
   python remove_green_background.py --input input.mp4 --output output.mov
-  
-  # 输出 WebM 格式（文件较小）
+
+  # 输出 WebM 格式(文件较小)
   python remove_green_background.py --input input.mp4 --output output.webm
-  
-  # 调整相似度阈值（背景不是纯黑时使用）
+
+  # 调整相似度阈值(背景不是纯绿色时使用)
   python remove_green_background.py --input input.mp4 --output output.mov --similarity 0.2
-  
-  # 调整边缘混合度（使边缘更平滑）
+
+  # 调整边缘混合度(使边缘更平滑)
   python remove_green_background.py --input input.mp4 --output output.mov --blend 0.1
 
+  # 调整色溢去除参数(去除人物边缘绿色)
+  python remove_green_background.py --input input.mp4 --output output.mov --despill-mix 1.0 --despill-expand 0.1
+
 参数说明:
-  --similarity: 绿色相似度阈值，值越大去除的颜色范围越广
-                如果背景不是纯绿色，可以适当增大此值（例如 0.15-0.3）
-  --blend:      边缘混合程度，值越大边缘越平滑
-                建议保持较小值（0.05-0.1）以避免主体边缘过度透明
+  --similarity:     绿色相似度阈值,值越大去除的颜色范围越广
+  --blend:          边缘混合程度,值越大边缘越平滑
+  --despill-mix:    色溢去除强度,值越大去除绿色越强(可能影响肤色)
+  --despill-expand: 色溢处理扩展范围,值越大处理区域越广
         """
     )
-    
+
     parser.add_argument(
         '-i', '--input',
         required=True,
@@ -180,39 +199,55 @@ def main():
     parser.add_argument(
         '-o', '--output',
         required=True,
-        help='输出视频文件路径（建议使用 .mov 或 .webm 格式）'
+        help='输出视频文件路径(建议使用 .mov 或 .webm 格式)'
     )
     parser.add_argument(
         '-s', '--similarity',
         type=float,
         default=0.1,
-        help='绿色相似度阈值 0.0-1.0（默认: 0.1）'
+        help='绿色相似度阈值 0.0-1.0 (默认: 0.1)'
     )
     parser.add_argument(
         '-b', '--blend',
         type=float,
         default=0.05,
-        help='边缘混合程度 0.0-1.0（默认: 0.05）'
+        help='边缘混合程度 0.0-1.0 (默认: 0.05)'
     )
-    
+    parser.add_argument(
+        '--despill-mix',
+        type=float,
+        default=0.9,
+        help='色溢去除强度 0.0-1.0 (默认: 0.9)'
+    )
+    parser.add_argument(
+        '--despill-expand',
+        type=float,
+        default=0.05,
+        help='色溢扩展范围 0.0-1.0 (默认: 0.05)'
+    )
+
     args = parser.parse_args()
-    
+
     # 验证参数
     try:
         validate_threshold(args.similarity, 'similarity')
         validate_threshold(args.blend, 'blend')
+        validate_threshold(args.despill_mix, 'despill-mix')
+        validate_threshold(args.despill_expand, 'despill-expand')
     except argparse.ArgumentTypeError as e:
         print(f"错误: {e}")
         sys.exit(1)
-    
+
     # 处理视频
     remover = BlackBackgroundRemover(
         input_path=args.input,
         output_path=args.output,
         similarity=args.similarity,
-        blend=args.blend
+        blend=args.blend,
+        despill_mix=args.despill_mix,
+        despill_expand=args.despill_expand
     )
-    
+
     success = remover.process()
     sys.exit(0 if success else 1)
 
