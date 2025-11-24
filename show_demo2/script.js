@@ -8,7 +8,7 @@ const courseData = [
         `,
         videoUrl: "http://192.168.8.231:50008/download/video/infinitetalk_res_480p_greenbg_slide1v9_rmb1.webm",
         duration: "0:10",
-        narration: "欢迎同学们选修制造工程体验课程M09：个性化首饰设计及制作。在这门课程中，你将学习首饰设计的基本原理，掌握3D建模和加工制作技能，亲手打造属于自己的独特作品。"
+        narration: "欢迎同学们选修制造工程体验课程M09：个性化首饰设计及制作。"
     },
     {
         id: 2,
@@ -16,7 +16,7 @@ const courseData = [
         slideContent: `
             <img src="slides/slide_002.png" style="max-width: 100%; height: auto;" alt="历史沿革">
         `,
-        videoUrl: "http://192.168.8.231:50008/download/video/infinitetalk_res_480p_greenbg_slide2v8_rmb.webm",
+        videoUrl: "http://192.168.8.231:50008/download/video/infinitetalk_res_480p_optimized_slide1v3.mov",
         duration: "0:10",
         narration: "工训训练中心有着百年传承。从1921年的手工教学到金工实习，再到工训文化和工创理念，中心不断发展演进。如今，我们已经完成了从机械化、电气化到信息化、智能化的转型升级，始终走在工程教育创新的前沿。"
     },
