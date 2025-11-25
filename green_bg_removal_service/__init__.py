@@ -1,0 +1,1 @@
+"""Green Background Removal Service"""
