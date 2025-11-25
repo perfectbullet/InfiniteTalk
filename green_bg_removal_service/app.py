@@ -157,7 +157,7 @@ async def get_log_content(filename: str):
         raise HTTPException(status_code=404, detail=f"日志文件不存在: {filename}")
     
     try:
-        with open(log_path, 'r', encoding='utf-8') as f:
+        with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
         return content
     except Exception as e:

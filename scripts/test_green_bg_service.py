@@ -10,6 +10,7 @@
 
 import sys
 import time
+import tempfile
 import subprocess
 import requests
 from pathlib import Path
@@ -56,25 +57,25 @@ def test_api():
         return False
     
     print("\n测试 3: 参数验证 - 输出格式与输入格式相同")
-    # 先创建一个测试文件
-    test_file = Path("/tmp/test_video.mp4")
-    test_file.touch()
+    # 使用临时文件
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+        test_file = Path(tmp.name)
     
-    response = requests.post(
-        f"{base_url}/convert",
-        json={
-            "input": str(test_file),
-            "output_format": ".mp4"
-        }
-    )
-    if response.status_code == 400:
-        print("✓ 正确返回 400 错误")
-    else:
-        print(f"✗ 期望 400，实际返回 {response.status_code}")
-        test_file.unlink()
-        return False
-    
-    test_file.unlink()
+    try:
+        response = requests.post(
+            f"{base_url}/convert",
+            json={
+                "input": str(test_file),
+                "output_format": ".mp4"
+            }
+        )
+        if response.status_code == 400:
+            print("✓ 正确返回 400 错误")
+        else:
+            print(f"✗ 期望 400，实际返回 {response.status_code}")
+            return False
+    finally:
+        test_file.unlink(missing_ok=True)
     
     print("\n测试 4: 日志文件不存在")
     response = requests.get(f"{base_url}/logs/nonexistent.log")
@@ -85,26 +86,26 @@ def test_api():
         return False
     
     print("\n测试 5: 自动添加点号到输出格式")
-    test_file = Path("/tmp/test_video2.mp4")
-    test_file.touch()
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+        test_file = Path(tmp.name)
     
-    response = requests.post(
-        f"{base_url}/convert",
-        json={
-            "input": str(test_file),
-            "output_format": "mov"  # 不带点号
-        }
-    )
-    # 不管是否成功启动命令，只要不报参数错误即可
-    if response.status_code in [200, 500]:
-        print("✓ 输出格式自动添加点号")
-    else:
-        print(f"✗ 意外的状态码: {response.status_code}")
-        print(f"响应内容: {response.text}")
-        test_file.unlink()
-        return False
-    
-    test_file.unlink()
+    try:
+        response = requests.post(
+            f"{base_url}/convert",
+            json={
+                "input": str(test_file),
+                "output_format": "mov"  # 不带点号
+            }
+        )
+        # 不管是否成功启动命令，只要不报参数错误即可
+        if response.status_code in [200, 500]:
+            print("✓ 输出格式自动添加点号")
+        else:
+            print(f"✗ 意外的状态码: {response.status_code}")
+            print(f"响应内容: {response.text}")
+            return False
+    finally:
+        test_file.unlink(missing_ok=True)
     
     print("\n✓ 所有测试通过!")
     return True
