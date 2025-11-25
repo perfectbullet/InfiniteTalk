@@ -441,8 +441,7 @@ async def download_file(file_type: str, filename: str):
 # 14. 创建视频生成任务
 @app.post("/api/tasks/create", tags=["Tasks"], response_model=TaskInfo)
 async def create_video_task(
-        prompt: str = Form(
-            default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下，动态的中景镜头捕捉到他元气满满的动作。",
+        prompt: str = Form(default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下，动态的中景镜头捕捉到他元气满满的动作。",
             description="视频生成提示词"
         ),
         image_path: str = Form(

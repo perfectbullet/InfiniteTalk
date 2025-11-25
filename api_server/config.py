@@ -175,7 +175,7 @@ class Config:
     # ==================== API 服务配置 ====================
     # 服务器配置
     API_HOST = "0.0.0.0"
-    API_PORT = 50007
+    API_PORT = 50002
     API_WORKERS = 1
 
     # API 文档配置

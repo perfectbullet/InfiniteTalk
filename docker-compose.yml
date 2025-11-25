@@ -4,11 +4,11 @@ name: Infinitetalk
 services:
 
   infinitetalk:
-    image: infinitetalk:v2
-    container_name: infinitetalk_v2
+    image: infinitetalk:v5
+    container_name: infinitetalk_v5
     ports:
-      - "50007:50007"
-      - "50008:50008"
+      - "50002:50002"
+      - "50003:50003"
     deploy:
       resources:
         reservations:
