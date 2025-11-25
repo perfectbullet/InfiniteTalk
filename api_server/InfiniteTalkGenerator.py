@@ -1,3 +1,4 @@
+import os
 import subprocess
 import logging
 import json
@@ -43,7 +44,8 @@ class InfiniteTalkGenerator:
                 'json_path': str,     # 任务 JSON 文件路径
                 'status': 'running',
                 'started_at': str,    # ISO 格式时间戳
-                'command': list       # 执行的命令
+                'command': list       # 执行的命令,
+                'generate_video_file': generate_video_file
             }
             失败时: {
                 'success': False,
@@ -58,7 +60,7 @@ class InfiniteTalkGenerator:
             log_dir = config.LOG_DIR
             log_dir.mkdir(exist_ok=True)
             log_path = log_dir / f"task_{task_id}.log"
-            generate_video_file = config.OUTPUT_VIDEO_DIR / f"infinitetalk_res_{task_id}.mp4"
+            generate_video_file = config.OUTPUT_VIDEO_DIR / f"infinitetalk_res_{task_id}"
             # 3️⃣ 构建命令（列表形式，不使用 shell）
             cmd = self._build_command(json_path, generate_video_file)
 
@@ -85,6 +87,8 @@ class InfiniteTalkGenerator:
             logger.info(f"✅ 进程已启动: PID={real_pid}")
 
             # 7️⃣ 保存进程信息（用于后续管理）
+            # 给实际生产的视频文件含有.mp4打补丁
+            generate_video_file = generate_video_file.with_suffix('.mp4')
             process_info = {
                 'process': process,
                 'log_file': log_file,
@@ -177,6 +181,11 @@ class InfiniteTalkGenerator:
         Returns:
             list: 命令行参数列表
         """
+        # 设置环境变量
+        os.environ["XFORMERS_DISABLED"] = "1"
+        os.environ["XFORMERS_MORE_DETAILS"] = "0"
+        os.environ["MAX_JOBS"] = "4"
+
         cmd = [
             "python",
             str(self.script_path),
@@ -191,7 +200,7 @@ class InfiniteTalkGenerator:
             "--input_json",
             str(json_path),
             "--lora_scale",
-            "0.8",
+            "1.0",
             "--size",
             "infinitetalk-480",
             "--sample_text_guide_scale",
@@ -207,7 +216,7 @@ class InfiniteTalkGenerator:
             "--sample_shift",
             "2",
             "--num_persistent_param_in_dit",
-            "0",
+            "2",
             "--save_file",
             str(save_file),
         ]
@@ -217,7 +226,6 @@ class InfiniteTalkGenerator:
     def get_status(self, task_id: str) -> Dict[str, Any]:
         """
         获取任务状态（结合进程返回码和日志内容判断）
-
         Returns:
             Dict: {
                 'status': 'running' | 'success' | 'failed' | 'not_found' | 'error',

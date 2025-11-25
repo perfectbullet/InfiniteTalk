@@ -15,7 +15,7 @@ from api_server.api_loger import logger
 from api_server.config import config
 from api_server.database import db_manager
 from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
-from api_server.routers import task_logs
+from api_server.routers import task_logs, video_task
 from api_server.utils import generate_unique_filename, validate_file_size
 from api_server.video_task_worker import video_task_worker
 
@@ -78,6 +78,15 @@ app.include_router(
     task_logs.router,
     prefix="/api",  # 如果 router 已经有 prefix，这里可以不加
     tags=["Task Logs"],
+    responses={
+        404: {"description": "资源不存在"},
+        500: {"description": "服务器错误"}
+    }
+)
+
+app.include_router(
+    video_task.router,
+    prefix="/api",  # 如果 router 已经有 prefix，这里可以不加
     responses={
         404: {"description": "资源不存在"},
         500: {"description": "服务器错误"}
@@ -439,7 +448,7 @@ async def download_file(file_type: str, filename: str):
 
 # ==================== 视频生成相关接口 ====================
 # 14. 创建视频生成任务
-@app.post("/api/tasks/create", tags=["Tasks"], response_model=TaskInfo)
+@app.post("/api/tasks/create", tags=["video task"], response_model=TaskInfo)
 async def create_video_task(
         prompt: str = Form(default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下，动态的中景镜头捕捉到他元气满满的动作。",
             description="视频生成提示词"
@@ -483,7 +492,7 @@ async def create_video_task(
 
 
 # 15. 查询任务状态
-@app.get("/api/tasks/{task_id}", tags=["Tasks"], response_model=TaskInfo)
+@app.get("/api/tasks/{task_id}", tags=["video task"], response_model=TaskInfo)
 async def get_task_status(task_id: str):
     """查询任务状态"""
     try:
@@ -499,7 +508,7 @@ async def get_task_status(task_id: str):
 
 
 # 16. 获取任务列表
-@app.get("/api/tasks", tags=["Tasks"], response_model=List[TaskInfo])
+@app.get("/api/tasks", tags=["video task"], response_model=List[TaskInfo])
 async def get_tasks(
         status: Optional[str] = None,
         limit: int = 20
@@ -514,7 +523,7 @@ async def get_tasks(
 
 
 # 17. 删除任务
-@app.delete("/api/tasks/{task_id}", response_model=dict)
+@app.delete("/api/tasks/{task_id}", tags=['video task'],response_model=dict)
 async def delete_task(task_id: str):
     """删除任务"""
     try:

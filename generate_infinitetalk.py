@@ -667,10 +667,6 @@ def generate(args):
         sum_video = torch.cat(generated_list, dim=1)
         save_video_ffmpeg(sum_video, args.save_file, [input_data['video_audio']], high_quality_save=False)
 
-    # 模拟执行2分支
-    # time.sleep(30.0)
-    # shutil.copy('infinitetalk_res_video_20251106_011032_8c10ea4e.mp4', f"{args.save_file}")
-
     # 这个日志不能删, 因为api根据日志文件判断是否生成成功
     logging.info(f"Generation finished.Saving generated video to {args.save_file}")
     logging.info("Finished.")
