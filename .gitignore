@@ -4,6 +4,7 @@ __pycache__/
 
 # Python venv
 .python_venv/*
+.venv/
 
 # pytest cache
 .pytest_cache
@@ -21,6 +22,7 @@ __pycache__/
 
 # Log
 *.log
+logs/
 
 # configure generated files
 config.nice
@@ -144,4 +146,5 @@ ai_agents/*.pcm
 /ai_agents/agents/examples/voice-assistant-live2d/.env
 /前端用的模型/
 /show_demo2/videos/
+/output_videos/
 /flash-attention/
