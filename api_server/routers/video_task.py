@@ -21,11 +21,11 @@ async def create_video_task(
                                    "她用富有表现力的手势强调重点内容。她的脸上洋溢着热情和温暖。自然光线充满整个空间，"
                                    "营造出充满灵感和创造力的学习环境。动态的中景镜头捕捉到她充满趣味的教学瞬间。",
             description="视频生成提示词"),
-        image_path: str = Form(
-            default="/workspace/InfiniteTalk/upload_image/img_20251125_023003_4810d60d.jpg",
+        image_path: str = Form(default="/workspace/InfiniteTalk/upload_image/img_20251125_023003_4810d60d.jpg",
             description="参考图片路径"),
         audio_text: str = Form(default="欢迎同学们选修制造工程体验课程M09：个性化首饰设计及制作。",
-            description="需要转换的文本")
+            description="需要转换的文本"),
+        spk_name: str = Form(default="胡桃", description="cosyvoice的说话人id")
 ):
     """
     创建视频生成任务（立即返回任务ID，后台异步生成）
@@ -38,7 +38,7 @@ async def create_video_task(
     try:
         # 第一步：请求文本转语音任务
         tts_api_url = "http://192.168.8.230:50002/tasks"
-        tts_payload = {"spk_id": "胡桃", "text": audio_text}
+        tts_payload = {"spk_id": spk_name, "text": audio_text}
         tts_response = requests.post(tts_api_url, json=tts_payload)
 
         if tts_response.status_code != 200:
