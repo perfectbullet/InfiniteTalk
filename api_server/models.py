@@ -49,6 +49,8 @@ class TaskInfo(BaseModel):
     audio_path: str
     generate_video_file: Optional[str] = None
     video_download_url: Optional[str] = None
+    audio_text: Optional[str] = None
+    spk_name: Optional[str] = None
 
     # 进程信息
     pid: Optional[int] = None

@@ -81,7 +81,9 @@ async def create_video_task(
             task_id=task_id,
             prompt=prompt,
             image_path=image_path,
-            audio_path=audio_local_path
+            audio_path=audio_local_path,
+            audio_text=audio_text,
+            spk_name=spk_name
         )
 
         # 第七步：将任务加入队列

@@ -238,7 +238,10 @@ class DatabaseManager:
             return False
 
     # ==================== 任务相关操作 ====================
-    async def create_task(self, task_id: str, prompt: str, image_path: str, audio_path: str) -> str:
+    async def create_task(self,
+                          task_id: str, prompt: str, image_path: str,
+                          audio_path: str, audio_text, spk_name: str
+                          ) -> str:
 
         """创建任务记录"""
         task_doc = {
@@ -248,6 +251,8 @@ class DatabaseManager:
             "image_path": image_path,
             "audio_path": audio_path,
             "created_at": datetime.now(),
+            "audio_text": audio_text,
+            "spk_name": spk_name
         }
         await self.db[config.COLLECTION_TASKS].insert_one(task_doc)
         logger.info(f"创建任务记录 task_doc: {task_doc}")

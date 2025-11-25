@@ -15,7 +15,7 @@ from api_server.api_loger import logger
 from api_server.config import config
 from api_server.database import db_manager
 from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
-from api_server.routers import task_logs, video_task
+from api_server.routers import task_logs, video_task, green_background_router
 from api_server.utils import generate_unique_filename, validate_file_size
 from api_server.video_task_worker import video_task_worker
 
@@ -87,6 +87,17 @@ app.include_router(
 app.include_router(
     video_task.router,
     prefix="/api",  # 如果 router 已经有 prefix，这里可以不加
+    responses={
+        404: {"description": "资源不存在"},
+        500: {"description": "服务器错误"}
+    }
+)
+
+# 注册绿幕去除路由
+app.include_router(
+    green_background_router.router,
+    prefix="/api",
+    tags=["Green Background Removal"],
     responses={
         404: {"description": "资源不存在"},
         500: {"description": "服务器错误"}
