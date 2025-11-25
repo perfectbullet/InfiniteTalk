@@ -1,7 +1,11 @@
 #!/bin/bash
 # 启动绿色背景去除服务的脚本
 
-cd "$(dirname "$0")/.." || exit 1
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$PROJECT_ROOT" || exit 1
 
 # 检查 Python 虚拟环境
 if [ ! -d ".venv" ]; then

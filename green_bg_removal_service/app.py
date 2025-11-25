@@ -8,6 +8,7 @@ FastAPI 应用：提供视频绿色背景去除服务
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -18,13 +19,19 @@ from pydantic import BaseModel, field_validator
 
 app = FastAPI(title="Green Background Removal Service")
 
+# 获取项目根目录
+PROJECT_ROOT = Path(__file__).parent.parent.absolute()
+
 # 配置目录
-OUTPUT_DIR = Path("output_videos")
-LOGS_DIR = Path("logs")
+OUTPUT_DIR = PROJECT_ROOT / "output_videos"
+LOGS_DIR = PROJECT_ROOT / "logs"
 
 # 确保目录存在
 OUTPUT_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
+
+# 绿色背景去除脚本路径
+SCRIPT_PATH = PROJECT_ROOT / "remove_green_background.py"
 
 
 class ConvertRequest(BaseModel):
@@ -99,9 +106,8 @@ async def convert_video(request: ConvertRequest):
     
     # 构建命令
     cmd = [
-        'nohup',
-        'python',
-        'remove_green_background.py',
+        sys.executable,  # 使用当前 Python 解释器
+        str(SCRIPT_PATH),
         '--input', str(input_path),
         '--output', str(output_path),
         '--similarity', '0.35',
@@ -110,14 +116,14 @@ async def convert_video(request: ConvertRequest):
         '--despill-expand', '0.1'
     ]
     
-    # 使用 nohup 执行命令并重定向日志
+    # 在后台执行命令并重定向日志
     try:
         with open(log_path, 'w') as log_file:
             process = subprocess.Popen(
                 cmd,
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
-                cwd='/home/runner/work/InfiniteTalk/InfiniteTalk',
+                cwd=str(PROJECT_ROOT),
                 start_new_session=True  # 使进程在后台运行
             )
         
