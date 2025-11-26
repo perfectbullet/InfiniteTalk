@@ -26,14 +26,14 @@ infinitetalk-fastapi-service/
 
 ## 安装依赖
 
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
 ## 启动服务
 
-```powershell
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+```bash
+nohup uvicorn app.main:app --host 0.0.0.0 --port 50008 > logs/uvicorn.log 2>&1 &
 ```
 
 ## 接口说明
