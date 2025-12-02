@@ -152,7 +152,7 @@ async def get_course_data(ppt_name: str) -> dict:
             "id": 4,
             "title": "第4讲:工艺介绍",
             "slideContent": '<img src="slides/slide_010.png" style="max-width: 100%; height: auto;" alt="工艺介绍">',
-            "videoUrl": ['http://192.168.8.231:50008/download/video/infinitetalk_res_480p_teacher1_green_bg_slide10_shorter_rmb.webm', 'http://192.168.8.231:50008/download/video/infinitetalk_res_480p_student1_green_bg_slide10_rmb.webm',],
+            "videoUrl": ['http://192.168.8.231:50008/download/video/infinitetalk_res_video_20251127_085832_183d25cf.webm', 'http://192.168.8.231:50008/download/video/infinitetalk_res_480p_student1_green_bg_slide10_rmb.webm',],
             "mov_videoUrl": [
                 'http://192.168.8.231:50008/download/video/infinitetalk_res_480p_teacher1_green_bg_slide10_shorter_rmb.mov',
                 'http://192.168.8.231:50008/download/video/infinitetalk_res_480p_student1_green_bg_slide10_rmb.mov',
