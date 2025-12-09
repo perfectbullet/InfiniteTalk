@@ -64,10 +64,10 @@ class InfiniteTalkGenerator:
             # 3️⃣ 构建命令（列表形式，不使用 shell）
             cmd = self._build_command(json_path, generate_video_file)
 
-            logger.info(f"🚀 启动视频生成任务: {task_id}")
-            logger.info(f"📝 命令: {' '.join(str(c) for c in cmd)}")
-            logger.info(f"📂 日志文件: {log_path}")
-            logger.info(f"📄 配置文件: {json_path}")
+            logger.info(f"启动视频生成任务: {task_id}")
+            logger.info(f"命令: {' '.join(str(c) for c in cmd)}")
+            logger.info(f"日志文件: {log_path}")
+            logger.info(f"配置文件: {json_path}")
 
             # 4️⃣ 打开日志文件（行缓冲模式，实时写入）
             log_file = open(log_path, 'w', buffering=1, encoding='utf-8')
@@ -167,7 +167,7 @@ class InfiniteTalkGenerator:
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(json_content, f, ensure_ascii=False, indent=4)
 
-        logger.info(f"📝 创建任务配置文件: {json_path}")
+        logger.info(f"创建任务配置文件: {json_path}")
         return json_path
 
     def _build_command(self, json_path: Path, save_file) -> list:

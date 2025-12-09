@@ -51,6 +51,7 @@ class TaskInfo(BaseModel):
     video_download_url: Optional[str] = None
     audio_text: Optional[str] = None
     spk_name: Optional[str] = None
+    no_bg_video_path: Optional[str] = None  # 去除绿幕后的视频路径
 
     # 进程信息
     pid: Optional[int] = None

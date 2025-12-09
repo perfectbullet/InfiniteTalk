@@ -5,6 +5,7 @@ from pathlib import Path
 from api_server.InfiniteTalkGenerator import InfiniteTalkGenerator
 from api_server.api_loger import logger
 from api_server.database import db_manager
+from api_server.utils import convert_video_no_background
 
 
 # ==================== 视频任务处理器 ====================
@@ -103,16 +104,16 @@ class VideoTaskWorker:
                 return
             # 第一次更新
             started_at = datetime.now()
-            logger.info(f"📍 [步骤1] 准备第一次更新为 processing")
+            logger.info(f"[步骤1] 准备第一次更新为 processing")
             try:
                 await db_manager.update_task_status(
                     task_id,
                     'processing',
                     started_at=started_at,
                 )
-                logger.info(f"📍 [步骤1完成] 第一次更新完成")
+                logger.info(f"[步骤1完成] 第一次更新完成")
             except Exception as e:
-                logger.error(f"📍 [步骤1失败] {e}", exc_info=True)
+                logger.error(f"[步骤1失败] {e}", exc_info=True)
                 raise
             # 准备任务信息
             task_info = {
@@ -121,11 +122,11 @@ class VideoTaskWorker:
                 'audio_path': task.audio_path
             }
             # 执行视频生成
-            logger.info(f"📍 [步骤2] 准备执行视频生成")
+            logger.info(f"[步骤2] 准备执行视频生成")
             result = self.generator.generate(task_info, task_id)
-            logger.info(f"📍 [步骤2完成] result: {result}")
+            logger.info(f"[步骤2完成] result: {result}")
             if result['success']:
-                logger.info(f"📍 [步骤3] 准备第二次更新为 running, PID={result['pid']}")
+                logger.info(f"[步骤3] 准备第二次更新为 running, PID={result['pid']}")
                 try:
                     await db_manager.update_task_status(
                         task_id,
@@ -136,16 +137,16 @@ class VideoTaskWorker:
                         command=result['command'],
                         generate_video_file=result['generate_video_file']
                     )
-                    logger.info(f"📍 [步骤3完成] 第二次更新完成")
+                    logger.info(f"[步骤3完成] 第二次更新完成")
                 except Exception as e:
-                    logger.error(f"📍 [步骤3失败] {e}", exc_info=True)
+                    logger.error(f"[步骤3失败] {e}", exc_info=True)
                     logger.exception(e)
                     raise e
                 logger.info(f"任务已启动: {task_id}, PID: {result['pid']}")
                 # 启动监控
-                logger.info(f"📍 [步骤4] 启动监控任务")
+                logger.info(f"[步骤4] 启动监控任务")
                 asyncio.create_task(self.monitor_task(task_id, result['pid'], result['generate_video_file']))
-                logger.info(f"📍 [步骤4完成] 监控任务已启动")
+                logger.info(f"[步骤4完成] 监控任务已启动")
             else:
                 ended_at = datetime.now()
                 logger.error(f"视频生成失败: {result.get('error')}")
@@ -197,12 +198,30 @@ class VideoTaskWorker:
                     video_path = Path(generate_video_file)
                     if video_path.exists():
                         ended_at = datetime.now()
+                        
+                        # 调用绿幕转换服务
+                        logger.info(f"开始绿幕转换处理: {video_path}")
+                        no_bg_video_path = await convert_video_no_background(
+                            str(video_path),
+                            output_format=".webm",
+                            similarity=0.35,
+                            blend=0.1,
+                            despill_mix=0.9,
+                            despill_expand=0.1
+                        )
+                        
+                        if no_bg_video_path:
+                            logger.info(f"绿幕转换成功: {no_bg_video_path}")
+                        else:
+                            logger.warning(f"绿幕转换失败，继续使用原视频: {video_path}")
+                        
                         await db_manager.update_task_status(
                             task_id,
                             status='success',
                             video_path=str(video_path),
                             ended_at=ended_at,
                             uptime=status['uptime'],
+                            no_bg_video_path=no_bg_video_path
                         )
                         logger.info(f"任务完成: {task_id}")
                     else:

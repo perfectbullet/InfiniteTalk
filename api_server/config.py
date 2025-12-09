@@ -183,6 +183,15 @@ class Config:
     API_DESCRIPTION = "InfiniteTalk 视频生成 API 服务"
     API_VERSION = "1.0.0"
 
+    # 绿幕背景替换服务配置
+    GREEN_BACKGROUND_SERVICE_URL = os.getenv(
+        "GREEN_BACKGROUND_SERVICE_URL",
+        "http://192.168.8.230:7000/api/remove"
+    )
+    GREEN_BACKGROUND_SERVICE_TIMEOUT = 30  # 超时时间（秒）
+    GREEN_BACKGROUND_BGC = "0,255,0"  # 绿色背景色 (R,G,B)
+    GREEN_BACKGROUND_MODEL = "u2net"  # 使用的模型
+
     # CORS 配置
     ENABLE_CORS = True
     CORS_ORIGINS = ["*"]  # 生产环境应该设置具体的域名

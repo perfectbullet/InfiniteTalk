@@ -11,7 +11,7 @@ from api_server.api_loger import logger
 from api_server.database import db_manager
 from api_server.models import TaskInfo
 from api_server.video_task_worker import video_task_worker
-
+from api_server.utils import call_green_background_service
 router = APIRouter(prefix="/video_task", tags=["video task"])
 
 
@@ -21,11 +21,15 @@ async def create_video_task(
                                    "她用富有表现力的手势强调重点内容。她的脸上洋溢着热情和温暖。自然光线充满整个空间，"
                                    "营造出充满灵感和创造力的学习环境。动态的中景镜头捕捉到她充满趣味的教学瞬间。",
             description="视频生成提示词"),
-        image_path: str = Form(default="/workspace/InfiniteTalk/upload_image/img_20251125_023003_4810d60d.jpg",
+        image_path: str = Form(default="/workspace/InfiniteTalk/upload_image/img_20251125_061050_4bce0a3b.png",
             description="参考图片路径"),
-        audio_text: str = Form(default="欢迎同学们选修制造工程体验课程M09：个性化首饰设计及制作。",
+        audio_text: str = Form(default="欢迎同学们选修制造工程体验课程。",
             description="需要转换的文本"),
-        spk_name: str = Form(default="胡桃", description="cosyvoice的说话人id")
+        spk_name: str = Form(default="胡桃", description="cosyvoice的说话人id"),
+        use_green_background: bool = Form(
+            default=True,
+            description="是否调用绿幕背景替换服务处理图片"
+        )
 ):
     """
     创建视频生成任务（立即返回任务ID，后台异步生成）
@@ -72,6 +76,18 @@ async def create_video_task(
         # 第四步：验证图片文件是否存在
         if not Path(image_path).exists():
             raise HTTPException(status_code=400, detail="Image file not found")
+        # 处理绿幕背景（如果启用）
+        final_image_path = image_path
+        if use_green_background:
+            logger.info(f"尝试调用绿幕服务处理图片: {image_path}")
+            green_bg_path = await call_green_background_service(image_path)
+            
+            if green_bg_path:
+                logger.info(f"绿幕服务处理成功，使用处理后的图片: {green_bg_path}")
+                final_image_path = green_bg_path
+            else:
+                logger.warning(f"绿幕服务处理失败，继续使用原始图片: {image_path}")
+                # 降级处理：使用原图继续执行
 
         # 第五步：创建任务ID
         task_id = f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -80,7 +96,7 @@ async def create_video_task(
         await db_manager.create_task(
             task_id=task_id,
             prompt=prompt,
-            image_path=image_path,
+            image_path=final_image_path,
             audio_path=audio_local_path,
             audio_text=audio_text,
             spk_name=spk_name

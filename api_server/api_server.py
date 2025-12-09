@@ -16,7 +16,7 @@ from api_server.config import config
 from api_server.database import db_manager
 from api_server.models import ImageInfo, TaskInfo, PromptInfo, AudioInfo
 from api_server.routers import task_logs, video_task, green_background_router
-from api_server.utils import generate_unique_filename, validate_file_size
+from api_server.utils import generate_unique_filename, validate_file_size, call_green_background_service
 from api_server.video_task_worker import video_task_worker
 
 
@@ -407,7 +407,23 @@ async def delete_audio(audio_id: str):
 
 
 # 13. 下载文件接口（通用）
-@app.get("/api/download/{file_type}/{filename}")
+@app.get(
+    "/api/download/{file_type}/{filename}",
+    response_class=FileResponse,
+    responses={
+        200: {
+            "description": "文件下载成功",
+            "content": {
+                "video/mp4": {},
+                "video/webm": {},
+                "audio/mpeg": {},
+                "audio/wav": {},
+                "image/jpeg": {},
+                "image/png": {}
+            }
+        }
+    }
+)
 async def download_file(file_type: str, filename: str):
     """
     下载文件（支持正确的 MIME 类型和文件名）
@@ -460,10 +476,10 @@ async def download_file(file_type: str, filename: str):
 
 
 # ==================== 视频生成相关接口 ====================
-# 14. 创建视频生成任务
+# 创建视频生成任务
 @app.post("/api/tasks/create", tags=["video task"], response_model=TaskInfo)
 async def create_video_task(
-        prompt: str = Form(default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下，动态的中景镜头捕捉到他元气满满的动作。",
+        prompt: str = Form(default="一位小朋友在热情的说话。他面带笑容显得十分自信。在自然光线下,动态的中景镜头捕捉到他元气满满的动作。",
             description="视频生成提示词"
         ),
         image_path: str = Form(
@@ -473,23 +489,46 @@ async def create_video_task(
         audio_path: str = Form(
             default="/workspace/InfiniteTalk/audio_file/audio_20251105_092704_cf433602.wav",
             description="音频文件路径"
+        ),
+        use_green_background: bool = Form(
+            default=True,
+            description="是否调用绿幕背景替换服务处理图片"
         )
 ):
-    """创建视频生成任务（立即返回任务ID，后台异步生成）"""
+    """
+    创建视频生成任务（立即返回任务ID，后台异步生成）
+    任务创建后会保存到数据库，并加入任务队列，由后台worker异步处理。
+    
+    """
     try:
         # 验证文件是否存在
         if not Path(image_path).exists():
             raise HTTPException(status_code=400, detail="Image file not found")
         if not Path(audio_path).exists():
             raise HTTPException(status_code=400, detail="Audio file not found")
+        # 处理绿幕背景（如果启用）
+        final_image_path = image_path
+        if use_green_background:
+            logger.info(f"尝试调用绿幕服务处理图片: {image_path}")
+            green_bg_path = await call_green_background_service(image_path)
+            
+            if green_bg_path:
+                logger.info(f"绿幕服务处理成功，使用处理后的图片: {green_bg_path}")
+                final_image_path = green_bg_path
+            else:
+                logger.warning(f"绿幕服务处理失败，继续使用原始图片: {image_path}")
+                # 降级处理：使用原图继续执行
+        
         # 创建任务ID
         task_id = f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-        # 保存任务到数据库
+        # 保存任务到数据库（使用最终确定的图片路径）
         await db_manager.create_task(
             task_id=task_id,
             prompt=prompt,
-            image_path=image_path,
-            audio_path=audio_path
+            image_path=final_image_path,
+            audio_path=audio_path,
+            audio_text="",
+            spk_name=Path(audio_path).stem
         )
         # 添加到任务队列
         await video_task_worker.add_task(task_id)
@@ -504,7 +543,7 @@ async def create_video_task(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 15. 查询任务状态
+# 查询任务状态
 @app.get("/api/tasks/{task_id}", tags=["video task"], response_model=TaskInfo)
 async def get_task_status(task_id: str):
     """查询任务状态"""

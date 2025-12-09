@@ -308,7 +308,8 @@ class DatabaseManager:
             log_path: Optional[str] = None,
             command: Optional[List[str]] = None,
             generate_video_file: Optional[str] = None,
-            uptime: Optional[float] = None
+            uptime: Optional[float] = None,
+            no_bg_video_path: Optional[str] = None
     ):
         """更新任务状态"""
         try:
@@ -340,6 +341,8 @@ class DatabaseManager:
                 update_data["uptime"] = uptime
             if generate_video_file is not None:
                 update_data["generate_video_file"] = generate_video_file
+            if no_bg_video_path is not None:
+                update_data["no_bg_video_path"] = no_bg_video_path
             # 清理数据（转换 Path 对象）
             update_data = self.sanitize_for_mongo(update_data)
             result = await self.db[config.COLLECTION_TASKS].update_one(
