@@ -30,16 +30,14 @@
 
 ## Run & Debug
 
-- 必须首先在项目的 scripts/ 目录下，维护好 Run & Debug 需要用到的全部 .sh 脚本
-- 对于所有 Run & Debug 操作，一律使用 scripts/ 目录下的 .sh 脚本进行启停。永远不要直接使用 npm、pnpm、uv、python 等等命令
-- 如果 .sh 脚本执行失败，无论是 .sh 本身的问题还是其他代码问题，需要先紧急修复。然后仍然坚持用 .sh 脚本进行启停
+- 对于所有 Run & Debug 操作，优先使用项目中已有的启动脚本（如 `run_api_server.py`）
+- 如果脚本执行失败，无论是脚本本身的问题还是其他代码问题，需要先紧急修复
 - Run & Debug 之前，为所有项目配置 Logger with File Output，并统一输出到 logs/ 目录下
 
 ## Python
 
 - 数据结构尽可能全部定义成强类型。如果个别场景不得不使用未经结构化定义的 dict，需要先停下来征求用户的同意
 - Python 虚拟环境永远使用 .venv 作为目录名
-- 必须使用 uv，而不是 pip、poetry、conda、python3、python。包括依赖管理、构建、调试启动等所有环节
 - 项目的根目录必须保持简洁，只保留必须存在的文件
 - main.py 内容也要简洁。只保留必须存在的代码
  
