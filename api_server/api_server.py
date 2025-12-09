@@ -120,7 +120,7 @@ if config.ENABLE_CORS:
 # 1. 图片上传接口
 @app.post("/api/images/upload", response_model=dict)
 async def upload_image(
-        person_name: str = Form(...),
+        person_name: str = Form(""),
         image: UploadFile = File(...)
 ):
     """上传图片"""
@@ -299,7 +299,6 @@ async def delete_prompt(prompt_id: str):
 # 9. 音频文件上传接口
 @app.post("/api/audio/upload", response_model=dict)
 async def upload_audio(
-        audio_text: str = Form(...),
         audio_file: UploadFile = File(...)
 ):
     """上传音频文件"""
@@ -328,7 +327,7 @@ async def upload_audio(
         await db_manager.create_audio(
             audio_id=audio_id,
             audio_path=str(audio_path),
-            audio_text=audio_text,
+            audio_text="",
             original_filename=audio_file.filename
         )
 
@@ -410,7 +409,10 @@ async def delete_audio(audio_id: str):
 # 13. 下载文件接口（通用）
 @app.get("/api/download/{file_type}/{filename}")
 async def download_file(file_type: str, filename: str):
-    """下载文件（支持正确的 MIME 类型和文件名）"""
+    """
+    下载文件（支持正确的 MIME 类型和文件名）
+    file_type可以是：audio video image
+    """
     try:
         # 1️⃣ 根据文件类型确定路径和默认 MIME 类型
         file_config = {

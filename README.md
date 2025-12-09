@@ -305,7 +305,7 @@ python generate_infinitetalk.py \
     --ckpt_dir weights/Wan2.1-I2V-14B-480P \
     --wav2vec_dir 'weights/chinese-wav2vec2-base' \
     --infinitetalk_dir weights/InfiniteTalk/single/infinitetalk.safetensors \
-    --lora_dir weights/Wan2.1_I2V_14B_FusionX_LoRA.safetensors \
+    --lora_dir WanVideo_comfy/Wan21_T2V_14B_lightx2v_cfg_step_distill_lora_rank32.safetensors \
     --input_json examples/single_example_image.json \
     --lora_scale 1.0 \
     --size infinitetalk-480 \
@@ -316,7 +316,7 @@ python generate_infinitetalk.py \
     --motion_frame 9 \
     --sample_shift 2 \
     --num_persistent_param_in_dit 0 \
-    --save_file infinitetalk_res_lora
+    --save_file infinitetalk_res_lora_1110
 ```
 
 正确使用FusioniX LoRA的命令如下：
@@ -331,9 +331,9 @@ python generate_infinitetalk.py \
     --size infinitetalk-480 \
     --sample_text_guide_scale 1.0 \
     --sample_audio_guide_scale 2.0 \
-    --sample_steps 8 \
+    --sample_steps 4 \
     --mode streaming \
-    --motion_frame 9 \
+    --motion_frame 5 \
     --sample_shift 2 \
     --num_persistent_param_in_dit 0 \
     --save_file infinitetalk_res_lora.mp4
