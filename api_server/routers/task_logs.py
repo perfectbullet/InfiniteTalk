@@ -131,7 +131,7 @@ async def get_task_logs(
                 # 打开文件
                 with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
                     # 1. 先读取已有内容
-                    logger.info(f"📖 开始读取已有日志内容")
+                    logger.info("开始读取已有日志内容")
                     line_count = 0
 
                     for line in f:
