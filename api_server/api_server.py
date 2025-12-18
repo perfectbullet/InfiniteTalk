@@ -583,15 +583,30 @@ async def delete_task(task_id: str):
         task_doc = await db_manager.get_task_by_id(task_id)
         if not task_doc:
             raise HTTPException(status_code=404, detail="Task not found")
+        
         # 删除视频文件（如果存在）
-        if task_doc.get('video_path'):
-            video_path = Path(task_doc['video_path'])
+        # task_doc 是 TaskInfo 对象，使用属性访问而不是 dict.get()
+        video_path_str = getattr(task_doc, 'video_path', None) or getattr(task_doc, 'generate_video_file', None)
+        if video_path_str:
+            video_path = Path(video_path_str)
             if video_path.exists():
-                video_path.unlink()
-        # 删除音频保存目录
-        task_audio_dir = config.AUDIO_SAVE_DIR / task_id
-        if task_audio_dir.exists():
-            shutil.rmtree(task_audio_dir)
+                try:
+                    video_path.unlink()
+                    logger.info(f"Deleted video file: {video_path_str}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete video file {video_path_str}: {e}")
+        
+        # 删除去绿幕后的视频文件（如果存在）
+        no_bg_video_path_str = getattr(task_doc, 'no_bg_video_path', None)
+        if no_bg_video_path_str:
+            no_bg_video_path = Path(no_bg_video_path_str)
+            if no_bg_video_path.exists():
+                try:
+                    no_bg_video_path.unlink()
+                    logger.info(f"Deleted no_bg video file: {no_bg_video_path_str}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete no_bg video file {no_bg_video_path_str}: {e}")
+        
         # 删除数据库记录
         success = await db_manager.delete_task(task_id)
         if success:

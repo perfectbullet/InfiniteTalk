@@ -468,7 +468,42 @@ class InfiniteTalkPipeline:
                 continue
             full_audio_embs.append(full_audio_emb)
 
-        assert len(full_audio_embs) == HUMAN_NUMBER, f"Aduio file not exists or length not satisfies frame nums."
+        # 详细检查音频文件是否存在或长度不满足
+        if len(full_audio_embs) != HUMAN_NUMBER:
+            audio_paths_info = {
+                'person1': audio_embedding_path_1,
+                'person2': audio_embedding_path_2 if HUMAN_NUMBER > 1 else None
+            }
+            audio_lengths_info = []
+            for idx, path in enumerate([audio_embedding_path_1, audio_embedding_path_2][:HUMAN_NUMBER]):
+                if path and os.path.exists(path):
+                    emb = torch.load(path)
+                    audio_lengths_info.append({
+                        'path': path,
+                        'exists': True,
+                        'shape': emb.shape,
+                        'has_nan': torch.isnan(emb).any().item(),
+                        'satisfies_frame_num': emb.shape[0] > frame_num
+                    })
+                else:
+                    audio_lengths_info.append({
+                        'path': path,
+                        'exists': False,
+                        'shape': None,
+                        'has_nan': None,
+                        'satisfies_frame_num': False
+                    })
+            
+            error_msg = (
+                f"❌ 音频文件检查失败：\n"
+                f"  期望人数: {HUMAN_NUMBER}\n"
+                f"  实际获取: {len(full_audio_embs)}\n"
+                f"  frame_num: {frame_num}\n"
+                f"  音频路径信息: {audio_paths_info}\n"
+                f"  音频详细信息: {audio_lengths_info}\n"
+            )
+            logging.error(error_msg)
+            raise ValueError(error_msg)
 
         # preprocess text embedding
         if n_prompt == "":
@@ -561,10 +596,7 @@ class InfiniteTalkPipeline:
                 y = torch.stack(y).to(self.param_dtype)  # B C T H W
                 cur_motion_frames_latent_num = int(1 + (cur_motion_frames_num - 1) // 4)
 
-                if is_first_clip:
-                    latent_motion_frames = self.vae.encode(cond_image)[0]
-                else:
-                    latent_motion_frames = self.vae.encode(cond_frame)[0]
+                latent_motion_frames = self.vae.encode(cond_image)[0]
 
                 y = torch.concat([msk, y], dim=1)  # B 4+C T H W
                 torch_gc()
@@ -579,7 +611,7 @@ class InfiniteTalkPipeline:
             elif HUMAN_NUMBER == 2:
                 if 'bbox' in input_data:
                     assert len(input_data['bbox']) == len(
-                        input_data['cond_audio']), f"The number of target bbox should be the same with cond_audio"
+                        input_data['cond_audio']), "The number of target bbox should be the same with cond_audio"
                     background_mask = torch.zeros([src_h, src_w])
                     for _, person_bbox in input_data['bbox'].items():
                         x_min, y_min, x_max, y_max = person_bbox
@@ -791,7 +823,7 @@ class InfiniteTalkPipeline:
             is_first_clip = False
             cur_motion_frames_num = motion_frame
 
-            cond_frame = videos[:, :, -cur_motion_frames_num:].to(torch.float32).to(self.device)
+            # cond_frame = videos[:, :, -cur_motion_frames_num:].to(torch.float32).to(self.device)
             audio_start_idx += (frame_num - cur_motion_frames_num)
             audio_end_idx = audio_start_idx + clip_length
 

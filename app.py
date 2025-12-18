@@ -596,30 +596,6 @@ def run_graio_demo(args):
                 input_data['cond_audio']['person2'] = emb2_path
                 input_data['video_audio'] = sum_audio
 
-
-        # if len(input_data['cond_audio'])==2:
-        #     new_human_speech1, new_human_speech2, sum_human_speechs = audio_prepare_multi(input_data['cond_audio']['person1'], input_data['cond_audio']['person2'], input_data['audio_type'])
-        #     audio_embedding_1 = get_embedding(new_human_speech1, wav2vec_feature_extractor, audio_encoder)
-        #     audio_embedding_2 = get_embedding(new_human_speech2, wav2vec_feature_extractor, audio_encoder)
-        #     emb1_path = os.path.join(args.audio_save_dir, '1.pt')
-        #     emb2_path = os.path.join(args.audio_save_dir, '2.pt')
-        #     sum_audio = os.path.join(args.audio_save_dir, 'sum.wav')
-        #     sf.write(sum_audio, sum_human_speechs, 16000)
-        #     torch.save(audio_embedding_1, emb1_path)
-        #     torch.save(audio_embedding_2, emb2_path)
-        #     input_data['cond_audio']['person1'] = emb1_path
-        #     input_data['cond_audio']['person2'] = emb2_path
-        #     input_data['video_audio'] = sum_audio
-        # elif len(input_data['cond_audio'])==1:
-        #     human_speech = audio_prepare_single(input_data['cond_audio']['person1'])
-        #     audio_embedding = get_embedding(human_speech, wav2vec_feature_extractor, audio_encoder)
-        #     emb_path = os.path.join(args.audio_save_dir, '1.pt')
-        #     sum_audio = os.path.join(args.audio_save_dir, 'sum.wav')
-        #     sf.write(sum_audio, human_speech, 16000)
-        #     torch.save(audio_embedding, emb_path)
-        #     input_data['cond_audio']['person1'] = emb_path
-        #     input_data['video_audio'] = sum_audio
-
         logging.info("Generating video ...")
         video = wan_i2v.generate_infinitetalk(
             input_data,
@@ -636,8 +612,7 @@ def run_graio_demo(args):
             max_frames_num=args.frame_num if args.mode == 'clip' else 1000,
             color_correction_strength = args.color_correction_strength,
             extra_args=args,
-            )
-        
+        )
 
         if args.save_file is None:
             formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S")
