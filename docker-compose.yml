@@ -4,8 +4,12 @@ name: Infinitetalk
 services:
 
   infinitetalk:
-    image: infinitetalk:v5
-    container_name: infinitetalk_v5
+    # image: infinitetalk:v5
+    image: infinitetalk:v6
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: infinitetalk_v6
     ports:
       - "50002:50002"
       - "50003:50003"
@@ -33,9 +37,10 @@ services:
       - ~/.cache/huggingface:/root/.cache/huggingface
     working_dir: /workspace/InfiniteTalk
     # 启动命令
-    command: tail -f /dev/null
+    command: python run_api_server.py
+    # command: tail -f /dev/null
     restart: unless-stopped
-    # 共享内存（重要！）
+    # 共享内存
     shm_size: '32gb'
     # 网络
     networks:
