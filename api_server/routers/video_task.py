@@ -12,6 +12,7 @@ from api_server.database import db_manager
 from api_server.models import TaskInfo
 from api_server.video_task_worker import video_task_worker
 from api_server.utils import call_green_background_service
+
 router = APIRouter(prefix="/video_task", tags=["video task"])
 
 
@@ -114,4 +115,89 @@ async def create_video_task(
         raise
     except Exception as e:
         logger.error(f"Error creating task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cancel/{task_id}")
+async def cancel_video_task(task_id: str):
+    """
+    取消指定的视频生成任务
+    
+    Args:
+        task_id: 任务ID
+        
+    Returns:
+        取消结果
+        
+    Raises:
+        HTTPException: 任务不存在或取消失败
+    """
+    try:
+        logger.info(f"收到取消任务请求: {task_id}")
+        
+        # 1. 检查任务是否存在
+        task = await db_manager.get_task_by_id(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail=f"任务不存在: {task_id}")
+        
+        # 2. 检查任务状态是否可以取消
+        if task.status in ['success', 'failed', 'cancelled']:
+            return {
+                "success": False,
+                "message": f"任务已经处于 {task.status} 状态，无法取消",
+                "task_id": task_id,
+                "current_status": task.status
+            }
+        
+        # 3. 调用 worker 取消任务（会杀死进程）
+        success = await video_task_worker.cancel_task(task_id)
+        
+        if success:
+            logger.info(f"任务取消成功: {task_id}")
+            return {
+                "success": True,
+                "message": f"任务 {task_id} 已成功取消",
+                "task_id": task_id,
+                "previous_status": task.status,
+                "current_status": "cancelled"
+            }
+        else:
+            logger.error(f"任务取消失败: {task_id}")
+            raise HTTPException(
+                status_code=500, 
+                detail="任务取消失败，请查看日志获取详细信息"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"取消任务时发生异常: {task_id}, {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/status/{task_id}", response_model=TaskInfo)
+async def get_task_status(task_id: str):
+    """
+    查询任务状态
+    
+    Args:
+        task_id: 任务ID
+        
+    Returns:
+        TaskInfo: 任务详细信息
+        
+    Raises:
+        HTTPException: 任务不存在
+    """
+    try:
+        task = await db_manager.get_task_by_id(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail=f"任务不存在: {task_id}")
+        
+        return task
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"查询任务状态失败: {task_id}, {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

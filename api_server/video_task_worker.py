@@ -263,27 +263,39 @@ class VideoTaskWorker:
         """
         try:
             task = await db_manager.get_task_by_id(task_id)
-            if not task or not task.pid:
-                logger.error(f"无法取消任务: {task_id}")
+            if not task:
+                logger.error(f"任务不存在: {task_id}")
                 return False
-
-            # 取消进程（非阻塞）
-            success = self.generator.cancel(task.pid, False)
-
-            if success:
+            
+            # 检查任务是否有 PID（是否已启动）
+            if not task.pid:
+                logger.warning(f"任务 {task_id} 未启动或未记录 PID，直接标记为已取消")
                 ended_at = datetime.now()
                 await db_manager.update_task_status(
                     task_id,
                     status='cancelled',
                     ended_at=ended_at
                 )
-                logger.info(f"任务已取消: {task_id}")
                 return True
 
-            return False
+            # 调用 generator 的 cancel 方法杀死进程
+            result = self.generator.cancel(task_id, force=False)
+
+            if result['success']:
+                ended_at = datetime.now()
+                await db_manager.update_task_status(
+                    task_id,
+                    status='cancelled',
+                    ended_at=ended_at
+                )
+                logger.info(f"任务已取消: {task_id}, PID: {result['pid']}")
+                return True
+            else:
+                logger.error(f"取消任务失败: {result['message']}")
+                return False
 
         except Exception as e:
-            logger.error(f"取消任务失败: {task_id}, {e}")
+            logger.error(f"取消任务失败: {task_id}, {e}", exc_info=True)
             return False
 
 video_task_worker = VideoTaskWorker()
