@@ -221,7 +221,8 @@ class VideoTaskWorker:
                             video_path=str(video_path),
                             ended_at=ended_at,
                             uptime=status['uptime'],
-                            no_bg_video_path=no_bg_video_path
+                            no_bg_video_path=no_bg_video_path,
+                            mov_video_path=no_bg_video_path.replace('.webm', '.mov') if no_bg_video_path else None
                         )
                         logger.info(f"任务完成: {task_id}")
                     else:
