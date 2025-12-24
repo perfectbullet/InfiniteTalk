@@ -42,16 +42,8 @@ class VideoTaskWorker:
                         logger.debug(f"任务运行中: {task_id}, 运行时长: {status['uptime']}s")
 
                     elif status['status'] == 'success':
-                        # 任务成功完成
-                        ended_at = datetime.now()
-                        await db_manager.update_task_status(
-                            task_id,
-                            status='success',
-                            ended_at=ended_at,
-                            uptime=status['uptime'],
-                        )
-                        logger.info(f"任务完成: {task_id}")
-
+                        # 任务成功完成 - 等待 monitor_task() 处理绿幕转换和最终状态更新
+                        logger.info(f"检测到任务进程完成: {task_id}，等待 monitor_task 完成绿幕转换和最终更新")
                     else:
                         # 任务失败
                         ended_at = datetime.now()
@@ -104,14 +96,14 @@ class VideoTaskWorker:
                 return
             # 第一次更新
             started_at = datetime.now()
-            logger.info(f"[步骤1] 准备第一次更新为 processing")
+            logger.info("[步骤1] 准备第一次更新为 processing")
             try:
                 await db_manager.update_task_status(
                     task_id,
                     'processing',
                     started_at=started_at,
                 )
-                logger.info(f"[步骤1完成] 第一次更新完成")
+                logger.info("[步骤1完成] 第一次更新完成")
             except Exception as e:
                 logger.error(f"[步骤1失败] {e}", exc_info=True)
                 raise
@@ -122,7 +114,7 @@ class VideoTaskWorker:
                 'audio_path': task.audio_path
             }
             # 执行视频生成
-            logger.info(f"[步骤2] 准备执行视频生成")
+            logger.info("[步骤2] 准备执行视频生成")
             result = self.generator.generate(task_info, task_id)
             logger.info(f"[步骤2完成] result: {result}")
             if result['success']:
@@ -137,16 +129,16 @@ class VideoTaskWorker:
                         command=result['command'],
                         generate_video_file=result['generate_video_file']
                     )
-                    logger.info(f"[步骤3完成] 第二次更新完成")
+                    logger.info("[步骤3完成] 第二次更新完成")
                 except Exception as e:
                     logger.error(f"[步骤3失败] {e}", exc_info=True)
                     logger.exception(e)
                     raise e
                 logger.info(f"任务已启动: {task_id}, PID: {result['pid']}")
                 # 启动监控
-                logger.info(f"[步骤4] 启动监控任务")
+                logger.info("[步骤4] 启动监控任务")
                 asyncio.create_task(self.monitor_task(task_id, result['pid'], result['generate_video_file']))
-                logger.info(f"[步骤4完成] 监控任务已启动")
+                logger.info("[步骤4完成] 监控任务已启动")
             else:
                 ended_at = datetime.now()
                 logger.error(f"视频生成失败: {result.get('error')}")
@@ -215,6 +207,10 @@ class VideoTaskWorker:
                         else:
                             logger.warning(f"绿幕转换失败，继续使用原视频: {video_path}")
                         
+                        # 绿幕转换完成，立即更新任务状态
+                        logger.info("绿幕转换完成，准备立即更新任务状态为成功")
+                        await asyncio.sleep(10)  # 确保前面的日志先输出
+
                         await db_manager.update_task_status(
                             task_id,
                             status='success',
