@@ -18,6 +18,7 @@ DEFAULT_TAIL_LINES = 100
 MAX_TAIL_LINES = 10000
 LOG_STREAM_INTERVAL = 0.5  # 秒
 MAX_LOG_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_LOG_CHARS_IN_SUMMARY = 500  # 日志摘要最大字符数
 
 
 # ===== 辅助函数 =====
@@ -82,6 +83,118 @@ def is_task_finished(status: Optional[str]) -> bool:
 
 
 # ===== 路由端点 =====
+
+@router.get(
+    "/recent",
+    summary="获取最近任务列表",
+    description="获取最近10个任务的信息和日志摘要",
+    response_description="返回任务列表及其日志摘要"
+)
+async def get_recent_tasks_with_logs(
+        limit: int = Query(
+            10,
+            ge=1,
+            le=50,
+            description="要获取的任务数量（默认10个）"
+        )
+):
+    """
+    ## 📋 获取最近任务列表
+
+    ### 功能说明
+    获取最近N个任务的详细信息，包括：
+    - 任务基本信息（ID、状态、prompt等）
+    - 日志摘要（最后200个字符或完整日志）
+
+    ### 参数
+    - `limit`: 要获取的任务数量（默认10个，最多50个）
+
+    ### 返回值
+    JSON格式的任务列表，每个任务包含：
+    - `task_id`: 任务ID
+    - `status`: 任务状态
+    - `prompt`: 任务的prompt（用于定位）
+    - `log_summary`: 日志摘要（最后200字符）
+    - `log_full_available`: 是否有完整日志文件
+    - `created_at`: 创建时间
+    - 其他任务信息
+
+    ### 示例
+    ```bash
+    # 获取最近10个任务
+    GET /api/tasks_logs/recent
+
+    # 获取最近20个任务
+    GET /api/tasks_logs/recent?limit=20
+    ```
+    """
+    try:
+        logger.info(f"📋 获取最近 {limit} 个任务")
+        
+        # 从数据库获取最近的任务
+        tasks = await db_manager.get_tasks(limit=limit)
+        
+        result = []
+        for task_doc in tasks:
+            task_id = task_doc.get('id')
+            
+            # 获取日志摘要
+            log_summary = None
+            log_full_available = False
+            log_path = LOG_BASE_DIR / f"task_{task_id}.log"
+            
+            if log_path.exists():
+                log_full_available = True
+                try:
+                    file_size = log_path.stat().st_size
+                    
+                    with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        if file_size > MAX_LOG_CHARS_IN_SUMMARY:
+                            # 文件过大，只读取最后200个字符
+                            f.seek(max(0, file_size - MAX_LOG_CHARS_IN_SUMMARY))
+                            log_summary = "..." + f.read()[-MAX_LOG_CHARS_IN_SUMMARY:]
+                        else:
+                            # 文件较小，读取全部
+                            log_summary = f.read()
+                except Exception as e:
+                    logger.warning(f"⚠️ 读取任务 {task_id} 日志失败: {str(e)}")
+                    log_summary = f"[读取日志失败: {str(e)}]"
+            
+            # 构建任务信息
+            task_info = {
+                "task_id": task_id,
+                "status": task_doc.get('status'),
+                "audio_text": task_doc.get('audio_text'),
+                "spk_name": task_doc.get('spk_name'),
+                "image_path": task_doc.get('image_path'),
+                "audio_path": task_doc.get('audio_path'),
+                "generate_video_file": task_doc.get('generate_video_file'),
+                "created_at": task_doc.get('created_at').isoformat() if task_doc.get('created_at') else None,
+                "started_at": task_doc.get('started_at').isoformat() if task_doc.get('started_at') else None,
+                "ended_at": task_doc.get('ended_at').isoformat() if task_doc.get('ended_at') else None,
+                "error_message": task_doc.get('error_message'),
+                "log_summary": log_summary,
+                "log_full_available": log_full_available
+            }
+            
+            result.append(task_info)
+        
+        logger.info(f"✅ 成功获取 {len(result)} 个任务信息")
+        
+        return JSONResponse(
+            content={
+                "total": len(result),
+                "tasks": result
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ 获取任务列表失败: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取任务列表失败: {str(e)}"
+        )
+
 
 @router.get(
     "/{task_id}/logs",
@@ -192,24 +305,46 @@ async def get_task_logs(
         # ===== 普通模式：一次性返回全部日志 =====
         try:
             file_size = log_path.stat().st_size
+            is_truncated = False
 
-            # 检查文件大小，过大时给出警告
-            if file_size > 10 * 1024 * 1024:  # 10MB
-                logger.warning(f"⚠️ 日志文件较大: {file_size / 1024 / 1024:.2f} MB")
+            # 检查文件大小，过大时只返回最后200个字符
+            if file_size > MAX_LOG_CHARS_IN_SUMMARY:
+                logger.warning(f"⚠️ 日志文件过大: {file_size / 1024 / 1024:.2f} MB，仅返回最后{MAX_LOG_CHARS_IN_SUMMARY}个字符")
+                is_truncated = True
+                
+                with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(max(0, file_size - MAX_LOG_CHARS_IN_SUMMARY))
+                    content = "..." + f.read()[-MAX_LOG_CHARS_IN_SUMMARY:]
+            else:
+                with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
 
-            with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-
+            # 获取任务信息（包含prompt）
+            task_info = await db_manager.get_task_by_id(task_id)
+            
             logger.info(f"✅ 成功读取日志，大小: {len(content)} 字符")
 
-            return JSONResponse(
-                content={
-                    "task_id": task_id,
-                    "logs": content,
-                    "size": file_size,
-                    "lines": content.count('\n')
+            response_data = {
+                "task_id": task_id,
+                "logs": content,
+                "size": file_size,
+                "lines": content.count('\n'),
+                "is_truncated": is_truncated
+            }
+            
+            # 添加任务信息（包含prompt）
+            if task_info:
+                response_data["task_info"] = {
+                    "status": task_info.status,
+                    "prompt": task_info.prompt,
+                    "audio_text": task_info.audio_text,
+                    "spk_name": task_info.spk_name,
+                    "created_at": task_info.created_at.isoformat() if task_info.created_at else None,
+                    "image_path": task_info.image_path,
+                    "audio_path": task_info.audio_path
                 }
-            )
+
+            return JSONResponse(content=response_data)
 
         except Exception as e:
             logger.error(f"❌ 读取日志失败: {str(e)}", exc_info=True)
@@ -399,3 +534,5 @@ async def delete_task_logs(task_id: str):
             status_code=500,
             detail=f"删除日志失败: {str(e)}"
         )
+
+
