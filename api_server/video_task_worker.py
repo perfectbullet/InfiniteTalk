@@ -209,7 +209,7 @@ class VideoTaskWorker:
                         
                         # 绿幕转换完成，立即更新任务状态
                         logger.info("绿幕转换完成，准备立即更新任务状态为成功")
-                        await asyncio.sleep(10)  # 确保前面的日志先输出
+                        await asyncio.sleep(120)  # 确保前面的日志先输出
 
                         await db_manager.update_task_status(
                             task_id,
