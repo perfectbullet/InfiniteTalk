@@ -28,6 +28,10 @@ services:
       # MongoDB 连接配置
       - MONGO_URL=mongodb://admin:infinitetalk123@mongodb:27017/infinitetalk_db?authSource=admin
       - MONGO_DB_NAME=infinitetalk_db
+      # TTS 服务配置
+      - TTS_API_URL=http://192.168.8.230:50002
+      # 绿幕背景替换服务配置
+      - GREEN_BACKGROUND_SERVICE_URL=http://192.168.8.230:7000/api/remove
     volumes:
       # 时区同步
       - /etc/localtime:/etc/localtime:ro

@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,9 @@ from api_server.database import db_manager
 from api_server.models import TaskInfo
 from api_server.video_task_worker import video_task_worker
 from api_server.utils import call_green_background_service
+
+# TTS 服务配置
+TTS_API_URL = os.getenv("TTS_API_URL", "http://192.168.8.230:50002")
 
 router = APIRouter(prefix="/video_task", tags=["video task"])
 
@@ -42,7 +46,7 @@ async def create_video_task(
     logger.info('开始视频生产任务，参数是: ')
     try:
         # 第一步：请求文本转语音任务
-        tts_api_url = "http://192.168.8.230:50002/tasks"
+        tts_api_url = f"{TTS_API_URL}/tasks"
         tts_payload = {"spk_id": spk_name, "text": audio_text}
         tts_response = requests.post(tts_api_url, json=tts_payload)
 
@@ -55,7 +59,7 @@ async def create_video_task(
             raise HTTPException(status_code=500, detail="TTS任务ID获取失败")
 
         # 第二步：轮询TTS任务状态，直到任务完成
-        tts_status_url = f"http://192.168.8.230:50002/tasks/{tts_task_id}"
+        tts_status_url = f"{TTS_API_URL}/tasks/{tts_task_id}"
         while True:
             tts_status_resp = requests.get(tts_status_url)
             if tts_status_resp.status_code != 200:
@@ -68,7 +72,7 @@ async def create_video_task(
                 raise HTTPException(status_code=500, detail="TTS任务转换失败")
 
         # 第三步：下载音频文件到本地
-        tts_audio_download_url = f"http://192.168.8.230:50002/tasks/{tts_task_id}/audio"
+        tts_audio_download_url = f"{TTS_API_URL}/tasks/{tts_task_id}/audio"
         audio_local_path = f"/workspace/InfiniteTalk/audio_file/audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.wav"
         async with aiofiles.open(audio_local_path, "wb") as audio_file:
             audio_data = requests.get(tts_audio_download_url).content
@@ -110,10 +114,8 @@ async def create_video_task(
         # 返回任务信息
         task_info = await db_manager.get_task_by_id(task_id)
         return task_info
-
-    except HTTPException:
-        raise
     except Exception as e:
+        logger.exception(e)
         logger.error(f"Error creating task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

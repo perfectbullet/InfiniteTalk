@@ -205,6 +205,8 @@ class InfiniteTalkGenerator:
             "infinitetalk-480",
             "--sample_text_guide_scale",
             "1.0",
+            "--offload_model",
+            "False",
             "--sample_audio_guide_scale",
             "2.0",
             "--sample_steps",
@@ -220,7 +222,7 @@ class InfiniteTalkGenerator:
             "--save_file",
             str(save_file),
         ]
-
+        logger.info(f"cmd is: {cmd}")
         return cmd
 
     def get_status(self, task_id: str) -> Dict[str, Any]:
