@@ -15,7 +15,7 @@ from api_server.video_task_worker import video_task_worker
 from api_server.utils import call_green_background_service
 
 # TTS 服务配置
-TTS_API_URL = os.getenv("TTS_API_URL", "http://192.168.8.230:50002")
+TTS_API_URL = os.getenv("TTS_API_URL", "http://192.168.8.233:50002")
 
 router = APIRouter(prefix="/video_task", tags=["video task"])
 
